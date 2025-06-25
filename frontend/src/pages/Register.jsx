@@ -1,0 +1,207 @@
+// src/pages/Register.jsx
+
+import React, { useState } from "react";
+import { User, Mail, Lock, Brain, Eye, EyeOff } from "lucide-react"; // Removed UserCheck as it's no longer needed
+import { useNavigate } from "react-router-dom";
+
+const Register = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    // username: "", // Removed username from state
+    password: "",
+    // confirmPassword: "", // Removed confirmPassword from state
+  });
+  // const [userType, setUserType] = useState("student"); // Removed userType state
+  const [showPassword, setShowPassword] = useState(false);
+  // const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Removed showConfirmPassword state
+  const [isLoading, setIsLoading] = useState(false);
+  // const [acceptTerms, setAcceptTerms] = useState(false); // Removed acceptTerms state
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleRegister = (e) => {
+    e.preventDefault();
+
+    // Basic validation (updated to exclude username and confirmPassword)
+    if (!formData.fullName || !formData.email || !formData.password) {
+      alert("Please fill in all fields.");
+      return;
+    }
+
+    // Removed password confirmation check
+    // if (formData.password !== formData.confirmPassword) {
+    //   alert("Passwords do not match.");
+    //   return;
+    // }
+
+    // Removed terms and conditions check
+    // if (!acceptTerms) {
+    //   alert("Please accept the terms and conditions.");
+    //   return;
+    // }
+
+    setIsLoading(true);
+    console.log("Registration Attempt:");
+    console.log("Form Data:", formData);
+    // console.log("User Type:", userType); // Removed console log for userType
+    // console.log("Accept Terms:", acceptTerms); // Removed console log for acceptTerms
+
+    // Simulate API call
+    setTimeout(() => {
+      alert(
+        "Registration successful! Please check your email to verify your account."
+      );
+      setIsLoading(false);
+      // Optional: Reset form or redirect after successful registration
+      setFormData({ fullName: "", email: "", password: "" }); // Reset only existing fields
+      // navigate("/login");
+    }, 2000);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-6 py-8">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="relative w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+              <Brain className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-3xl font-bold text-white">EduForce</span>
+          </div>
+          <h2 className="text-4xl font-bold text-white mb-2">Join EduForce</h2>
+          <p className="text-gray-300">
+            Create your account and start your learning journey
+          </p>
+        </div>
+
+        {/* Register Form */}
+        <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
+          <form onSubmit={handleRegister} className="space-y-5">
+            {/* Removed User Type Selection */}
+
+            {/* Full Name Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">
+                Full Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="fullName"
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 pl-12 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  required
+                />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              </div>
+            </div>
+
+            {/* Email Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">
+                Email Address
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Enter your email"
+                  className="w-full px-4 py-3 pl-12 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+              </div>
+            </div>
+
+            {/* Removed Username Input */}
+
+            {/* Password Input */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Create a password"
+                  className="w-full px-4 py-3 pl-12 pr-12 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Removed Confirm Password Input */}
+            {/* Removed Terms and Conditions */}
+
+            {/* Register Button */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <span>Creating Account...</span>
+                </div>
+              ) : (
+                "Create Account"
+              )}
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <div className="text-center mt-6">
+            <p className="text-gray-400">
+              Already have an account?{" "}
+              <button
+                onClick={() => {
+                  navigate("/login");
+                }}
+                className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+              >
+                Sign in here
+              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Register;
