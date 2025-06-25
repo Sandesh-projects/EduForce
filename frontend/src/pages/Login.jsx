@@ -1,37 +1,77 @@
+// src/pages/Login.jsx
+
 import React, { useState } from "react";
 import { User, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext"; // Import useAuth hook
 
 const Login = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const { login } = useAuth(); // Get the login function from AuthContext
+
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
 
-    if (!username || !password) {
-      alert("Please enter both username and password.");
+    if (!email || !password) {
+      setErrorMessage("Please enter both email and password.");
       return;
     }
 
     setIsLoading(true);
-    console.log("Login Attempt:");
-    console.log("Username:", username);
-    console.log("Password:", password);
-    console.log("Remember Me:", rememberMe);
 
-    setIsLoading(false);
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/login",
+        { email, password }
+      );
 
-    // Simulate API call
+      // The backend response should already contain _id, fullName, email, role, and token
+      const userData = response.data;
+
+      // Call the login function from AuthContext to update global state and localStorage
+      login(userData); // This will update isLoggedIn and user state in AuthContext
+
+      alert(userData.message || "Login successful!");
+
+      // Redirect immediately after successful login and context update
+      if (userData.role === "student") {
+        navigate("/student-home");
+      } else if (userData.role === "teacher") {
+        navigate("/teacher-home");
+      } else {
+        // Fallback for unexpected or undefined roles
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      if (error.response) {
+        setErrorMessage(
+          error.response.data.message ||
+            "Invalid credentials. Please try again."
+        );
+      } else if (error.request) {
+        setErrorMessage(
+          "No response from server. Please check your internet connection or server status."
+        );
+      } else {
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-6">
-      {/* Background Effects */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-6 py-8">
+      {/* ... (rest of your Login component JSX) ... */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl"></div>
@@ -55,18 +95,22 @@ const Login = () => {
         {/* Login Form */}
         <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* Username Input */}
+            {errorMessage && (
+              <div className="bg-red-500 bg-opacity-20 text-red-300 border border-red-400 rounded-md p-3 text-sm text-center">
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Email Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">
-                Username
-              </label>
+              <label className="text-sm font-medium text-gray-300">Email</label>
               <div className="relative">
                 <input
-                  type="text"
-                  placeholder="Enter your username"
+                  type="email"
+                  placeholder="Enter your email"
                   className="w-full px-4 py-3 pl-12 bg-gray-800/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all duration-300"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -100,20 +144,6 @@ const Login = () => {
                   )}
                 </button>
               </div>
-            </div>
-
-            {/* EduForce & Forgot Password */}
-            <div className="flex justify-between items-center">
-              <label className="flex items-center space-x-2 cursor-pointer group">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                </div>
-              </label>
             </div>
 
             {/* Login Button */}

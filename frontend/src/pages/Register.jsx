@@ -1,23 +1,21 @@
 // src/pages/Register.jsx
 
 import React, { useState } from "react";
-import { User, Mail, Lock, Brain, Eye, EyeOff } from "lucide-react"; // Removed UserCheck as it's no longer needed
+import { User, Mail, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios"; // Import axios
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
-    // username: "", // Removed username from state
     password: "",
-    // confirmPassword: "", // Removed confirmPassword from state
+    role: "student", // Added new state for role with a default value
   });
-  // const [userType, setUserType] = useState("student"); // Removed userType state
   const [showPassword, setShowPassword] = useState(false);
-  // const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Removed showConfirmPassword state
   const [isLoading, setIsLoading] = useState(false);
-  // const [acceptTerms, setAcceptTerms] = useState(false); // Removed acceptTerms state
+  const [errorMessage, setErrorMessage] = useState(""); // State for displaying API errors
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,43 +25,51 @@ const Register = () => {
     }));
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setErrorMessage(""); // Clear previous errors
 
-    // Basic validation (updated to exclude username and confirmPassword)
-    if (!formData.fullName || !formData.email || !formData.password) {
-      alert("Please fill in all fields.");
+    // Basic frontend validation
+    // Now also checking for role selection if you decide to make it mandatory,
+    // though with default it's always set.
+    if (
+      !formData.fullName ||
+      !formData.email ||
+      !formData.password ||
+      !formData.role
+    ) {
+      setErrorMessage("Please fill in all fields.");
       return;
     }
 
-    // Removed password confirmation check
-    // if (formData.password !== formData.confirmPassword) {
-    //   alert("Passwords do not match.");
-    //   return;
-    // }
-
-    // Removed terms and conditions check
-    // if (!acceptTerms) {
-    //   alert("Please accept the terms and conditions.");
-    //   return;
-    // }
-
     setIsLoading(true);
-    console.log("Registration Attempt:");
-    console.log("Form Data:", formData);
-    // console.log("User Type:", userType); // Removed console log for userType
-    // console.log("Accept Terms:", acceptTerms); // Removed console log for acceptTerms
 
-    // Simulate API call
-    setTimeout(() => {
-      alert(
-        "Registration successful! Please check your email to verify your account."
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/auth/register", // Adjust URL if your backend is on a different port/domain
+        formData // Now formData includes 'role'
       );
-      setIsLoading(false);
-      // Optional: Reset form or redirect after successful registration
-      setFormData({ fullName: "", email: "", password: "" }); // Reset only existing fields
-      // navigate("/login");
-    }, 2000);
+
+      // Registration is successful
+      alert("Registration successful! You can now log in.");
+      setFormData({ fullName: "", email: "", password: "", role: "student" }); // Reset form including role
+      navigate("/login"); // Redirect to login page
+    } catch (error) {
+      console.error("Error during registration:", error);
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        setErrorMessage(error.response.data.message);
+      } else if (error.request) {
+        setErrorMessage("No response from server. Please try again later.");
+      } else {
+        setErrorMessage("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false); // Stop loading regardless of success or failure
+    }
   };
 
   return (
@@ -92,7 +98,42 @@ const Register = () => {
         {/* Register Form */}
         <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleRegister} className="space-y-5">
-            {/* Removed User Type Selection */}
+            {errorMessage && (
+              <div className="bg-red-500 bg-opacity-20 text-red-300 border border-red-400 rounded-md p-3 text-sm text-center">
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Role Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">
+                Register as
+              </label>
+              <div className="flex space-x-4">
+                <label className="inline-flex items-center text-gray-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={formData.role === "student"}
+                    onChange={handleInputChange}
+                    className="form-radio h-4 w-4 text-purple-600 bg-gray-800/50 border-gray-600 focus:ring-purple-500"
+                  />
+                  <span className="ml-2">Student</span>
+                </label>
+                <label className="inline-flex items-center text-gray-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="role"
+                    value="teacher"
+                    checked={formData.role === "teacher"}
+                    onChange={handleInputChange}
+                    className="form-radio h-4 w-4 text-pink-600 bg-gray-800/50 border-gray-600 focus:ring-pink-500"
+                  />
+                  <span className="ml-2">Teacher</span>
+                </label>
+              </div>
+            </div>
 
             {/* Full Name Input */}
             <div className="space-y-2">
@@ -132,8 +173,6 @@ const Register = () => {
               </div>
             </div>
 
-            {/* Removed Username Input */}
-
             {/* Password Input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">
@@ -163,9 +202,6 @@ const Register = () => {
                 </button>
               </div>
             </div>
-
-            {/* Removed Confirm Password Input */}
-            {/* Removed Terms and Conditions */}
 
             {/* Register Button */}
             <button
