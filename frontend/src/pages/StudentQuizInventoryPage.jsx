@@ -172,12 +172,13 @@ const StudentQuizInventoryPage = () => {
             <Frown className="w-12 h-12 mb-4" />
             {attemptsError}
           </div>
-        ) : filteredAndSortedAttempts.length === 0 ? ( // THIS LINE WAS CHANGED
+        ) : filteredAndSortedAttempts.length === 0 ? (
           <div className="text-center py-10 text-gray-300">
             No quiz attempts found yet. Start by taking a new quiz!
           </div>
         ) : (
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-xl overflow-hidden">
+          // Added overflow-x-auto to this div to make the table horizontally scrollable
+          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-xl overflow-hidden overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-700">
                 <tr>
