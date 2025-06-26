@@ -1,54 +1,129 @@
 // src/pages/TeacherHomePage.jsx
-import React from "react";
+import React, { useState, useRef } from "react";
+import axios from "../axios"; // Your configured axios instance
+import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify"; // For notifications
+import { Link } from "react-router-dom"; // Import Link for navigation
+
+// Import Lucide Icons
 import {
-  Video,
-  FileText,
   Brain,
-  PenTool,
-  BarChart3,
-  Eye,
-  PlusCircle,
   Upload,
   CheckCircle,
-  Edit,
-  ClipboardList,
-  Activity,
-  Award,
-  BookOpen, // Added for consistency, even if not directly used in teacher features list
-  Users, // Added for consistency
-} from "lucide-react"; // Ensured all potentially useful icons are imported
+  X, // Icon for closing modal
+  Loader, // Icon for loading state
+  BarChart3,
+  ClipboardList, // Added back for the "View Quizzes" card
+} from "lucide-react";
+
+// QuizPreviewModal is no longer directly controlled by TeacherHomePage
+// import QuizPreviewModal from "../components/QuizPreviewModal";
 
 const TeacherHomePage = () => {
-  // Dummy data for demonstration
-  const playlists = [
-    { id: 1, title: "Algebra I Fundamentals", videos: 12, notes: 3 },
-    { id: 2, title: "Geometry Basics", videos: 8, notes: 2 },
-    { id: 3, title: "Calculus AB: Limits", videos: 5, notes: 1 },
-  ];
+  const { user, isLoggedIn } = useAuth();
+  const [showGenerateQuizModal, setShowGenerateQuizModal] = useState(false);
+  const [pdfFile, setPdfFile] = useState(null);
+  const [subject, setSubject] = useState("");
+  const [userProvidedTopic, setUserProvidedTopic] = useState("");
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [generateLoading, setGenerateLoading] = useState(false);
+  const [generateError, setGenerateError] = useState("");
+  const [generateSuccess, setGenerateSuccess] = useState("");
 
-  const quizzes = [
-    {
-      id: 101,
-      title: "Algebra Chapter 1 Quiz",
-      status: "Published",
-      questions: 20,
-      submissions: 45,
-    },
-    {
-      id: 102,
-      title: "Geometry Unit 2 Test",
-      status: "Draft",
-      questions: 15,
-      submissions: 0,
-    },
-    {
-      id: 103,
-      title: "Calculus Limits Intro",
-      status: "Needs Review",
-      questions: 10,
-      submissions: 0,
-    },
-  ];
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === "application/pdf") {
+      setPdfFile(file);
+      setGenerateError(""); // Clear any previous errors
+    } else {
+      setPdfFile(null);
+      setGenerateError("Please select a PDF file.");
+    }
+  };
+
+  const handleGenerateQuizSubmit = async (e) => {
+    e.preventDefault();
+    setGenerateLoading(true);
+    setGenerateError("");
+    setGenerateSuccess("");
+
+    if (!pdfFile) {
+      setGenerateError("Please upload a PDF file.");
+      setGenerateLoading(false);
+      return;
+    }
+    if (!subject.trim()) {
+      setGenerateError("Please enter a Subject.");
+      setGenerateLoading(false);
+      return;
+    }
+    if (!userProvidedTopic.trim()) {
+      setGenerateError("Please enter a Topic.");
+      setGenerateLoading(false);
+      return;
+    }
+    if (numQuestions < 1 || numQuestions > 25) {
+      setGenerateError("Number of questions must be between 1 and 25.");
+      setGenerateLoading(false);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(pdfFile);
+
+    reader.onloadend = async () => {
+      const base64Pdf = reader.result.split(",")[1]; // Get the Base64 part
+
+      try {
+        const response = await axios.post("/api/quizzes/generate", {
+          pdfBase64: base64Pdf,
+          subject,
+          userProvidedTopic,
+          numQuestions: parseInt(numQuestions), // Ensure numQuestions is a number
+        });
+
+        setGenerateSuccess(
+          `Quiz "${response.data.quiz.quizTitle}" (${response.data.quiz.quizCode}) generated successfully!`
+        );
+        toast.success(
+          `Quiz "${response.data.quiz.quizTitle}" generated successfully!`
+        );
+
+        setShowGenerateQuizModal(false); // Close modal on success
+        setPdfFile(null); // Clear form fields
+        setSubject("");
+        setUserProvidedTopic("");
+        setNumQuestions(5);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""; // Clear file input
+        }
+        // No need to call fetchTeacherQuizzes here, as that logic is now on TeacherQuizzesPage
+      } catch (error) {
+        console.error(
+          "Error generating quiz:",
+          error.response?.data || error.message
+        );
+        setGenerateError(
+          error.response?.data?.message ||
+            "Failed to generate quiz. Please try again."
+        );
+        toast.error(
+          error.response?.data?.message || "Failed to generate quiz."
+        );
+      } finally {
+        setGenerateLoading(false);
+      }
+    };
+
+    reader.onerror = (error) => {
+      setGenerateError("Failed to read PDF file.");
+      setGenerateLoading(false);
+      console.error("FileReader error:", error);
+      toast.error("Failed to read PDF file.");
+    };
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-inter">
@@ -72,114 +147,9 @@ const TeacherHomePage = () => {
           </p>
         </section>
 
-        {/* Quick Actions / Overview */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-purple-500/20 transition-all duration-300">
-            <Video className="w-12 h-12 text-purple-400 mb-3" />
-            <h3 className="text-2xl font-semibold mb-2">My Playlists</h3>
-            <p className="text-gray-400">Organize your video lectures.</p>
-            <button className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-5 py-2 rounded-full hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105">
-              View All
-            </button>
-          </div>
-
-          <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/20 transition-all duration-300">
-            <ClipboardList className="w-12 h-12 text-pink-400 mb-3" />
-            <h3 className="text-2xl font-semibold mb-2">Quiz Builder</h3>
-            <p className="text-gray-400">Create & manage your assessments.</p>
-            <button className="mt-4 bg-gradient-to-r from-pink-600 to-red-600 text-white px-5 py-2 rounded-full hover:from-pink-700 hover:to-red-700 transition-all duration-300 transform hover:scale-105">
-              Start New
-            </button>
-          </div>
-
-          <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-purple-500/20 transition-all duration-300">
-            <BarChart3 className="w-12 h-12 text-teal-400 mb-3" />
-            <h3 className="text-2xl font-semibold mb-2">Student Analytics</h3>
-            <p className="text-gray-400">Monitor performance insights.</p>
-            <button className="mt-4 bg-gradient-to-r from-teal-600 to-green-600 text-white px-5 py-2 rounded-full hover:from-teal-700 hover:to-green-700 transition-all duration-300 transform hover:scale-105">
-              View Reports
-            </button>
-          </div>
-        </section>
-
-        {/* 1. Playlists Management */}
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-white">
-              Your Video Playlists
-            </h2>
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-full flex items-center space-x-2 transition-colors">
-              <PlusCircle className="w-5 h-5" />
-              <span>New Playlist</span>
-            </button>
-          </div>
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
-            {playlists.length > 0 ? (
-              <ul className="space-y-4">
-                {playlists.map((playlist) => (
-                  <li
-                    key={playlist.id}
-                    className="flex items-center justify-between bg-gray-900/50 p-4 rounded-xl border border-gray-700"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <Video className="w-6 h-6 text-purple-400" />
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {playlist.title}
-                        </h3>
-                        <p className="text-gray-400 text-sm">
-                          {playlist.videos} videos, {playlist.notes} PDF notes
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-3">
-                      <button className="text-purple-400 hover:text-purple-300 text-sm font-medium">
-                        Edit
-                      </button>
-                      <button className="text-pink-400 hover:text-pink-300 text-sm font-medium">
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-400 text-center py-8">
-                No playlists yet. Start by creating a new one!
-              </p>
-            )}
-          </div>
-        </section>
-
-        {/* 2. Content Upload & 3. AI MCQ Generation */}
+        {/* Content Upload & AI MCQ Generation */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              Upload & Automate
-            </h2>
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-xl p-8 text-center text-gray-400 hover:border-purple-500 transition-colors cursor-pointer">
-              <Upload className="w-12 h-12 mb-4 text-gray-500" />
-              <p className="text-lg mb-2">Drag & Drop PDFs Here</p>
-              <p className="text-sm">or click to browse files</p>
-              <input
-                type="file"
-                accept=".pdf"
-                className="hidden"
-                id="pdf-upload"
-              />
-              <label
-                htmlFor="pdf-upload"
-                className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-full cursor-pointer transition-colors"
-              >
-                Select PDF
-              </label>
-            </div>
-            <p className="text-gray-500 text-sm mt-4 text-center">
-              Supported formats: .pdf (max 20MB)
-            </p>
-          </div>
-
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
+          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl col-span-full">
             <h2 className="text-3xl font-bold text-white mb-6">
               AI Quiz Generation
             </h2>
@@ -189,153 +159,61 @@ const TeacherHomePage = () => {
                 Automatically generate Multiple Choice Questions (MCQs) from
                 your uploaded PDFs using Gemini AI.
               </p>
-              <button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105">
+              <button
+                onClick={() => setShowGenerateQuizModal(true)}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105"
+              >
                 Generate MCQs
               </button>
               <p className="text-gray-500 text-sm mt-4">
                 Once uploaded, click to generate quizzes.
               </p>
             </div>
-            {/* Dummy progress/status */}
-            <div className="mt-6 flex items-center text-gray-400">
-              <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-              <span>
-                Last PDF Processed: "Physics_Ch1.pdf" - 15 MCQs generated.
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* 4. Review/Edit/Publish Quizzes */}
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-white">Your Quizzes</h2>
-            <button className="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-full flex items-center space-x-2 transition-colors">
-              <PlusCircle className="w-5 h-5" />
-              <span>Create New Quiz</span>
-            </button>
-          </div>
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
-            {quizzes.length > 0 ? (
-              <ul className="space-y-4">
-                {quizzes.map((quiz) => (
-                  <li
-                    key={quiz.id}
-                    className="flex flex-col md:flex-row items-center justify-between bg-gray-900/50 p-4 rounded-xl border border-gray-700"
-                  >
-                    <div className="flex items-center space-x-4 mb-3 md:mb-0">
-                      <ClipboardList className="w-6 h-6 text-pink-400" />
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {quiz.title}
-                        </h3>
-                        <p className="text-gray-400 text-sm">
-                          {quiz.questions} questions | Status:{" "}
-                          <span
-                            className={`${
-                              quiz.status === "Published"
-                                ? "text-green-400"
-                                : quiz.status === "Draft"
-                                ? "text-yellow-400"
-                                : "text-blue-400"
-                            } font-medium`}
-                          >
-                            {quiz.status}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-3">
-                      {quiz.status !== "Published" && (
-                        <button className="text-purple-400 hover:text-purple-300 text-sm font-medium flex items-center space-x-1">
-                          <Edit className="w-4 h-4" /> <span>Edit</span>
-                        </button>
-                      )}
-                      {quiz.status !== "Published" && (
-                        <button className="bg-gradient-to-r from-teal-600 to-green-600 text-white px-4 py-2 rounded-full text-sm hover:from-teal-700 hover:to-green-700 transition-all duration-300">
-                          Publish
-                        </button>
-                      )}
-                      {quiz.status === "Published" && (
-                        <span className="text-green-400 text-sm font-medium flex items-center space-x-1">
-                          <CheckCircle className="w-4 h-4" /> Published
-                        </span>
-                      )}
-                      <button className="text-red-400 hover:text-red-300 text-sm font-medium">
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-400 text-center py-8">
-                No quizzes created yet. Start building one!
-              </p>
+            {generateSuccess && (
+              <div className="mt-4 flex items-center text-green-400">
+                <CheckCircle className="w-5 h-5 mr-2" />
+                <span>{generateSuccess}</span>
+              </div>
+            )}
+            {generateError && (
+              <div className="mt-4 flex items-center text-red-400">
+                <X className="w-5 h-5 mr-2" />
+                <span>{generateError}</span>
+              </div>
             )}
           </div>
         </section>
 
-        {/* 5. Monitor Students' Quiz Results & Analytics */}
-        <section className="mb-16">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-white">
-              Student Performance Analytics
-            </h2>
-            <button className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-2 rounded-full flex items-center space-x-2 transition-colors">
-              <Activity className="w-5 h-5" />
-              <span>Full Reports</span>
-            </button>
-          </div>
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-900/50 p-5 rounded-xl border border-gray-700 text-center">
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Average Quiz Score
-                </h3>
-                <p className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  82%
-                </p>
-                <p className="text-gray-400 text-sm mt-1">Across all quizzes</p>
-              </div>
-              <div className="bg-gray-900/50 p-5 rounded-xl border border-gray-700 text-center">
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Active Students
-                </h3>
-                <p className="text-5xl font-bold bg-gradient-to-r from-orange-400 to-yellow-400 bg-clip-text text-transparent">
-                  1,245
-                </p>
-                <p className="text-gray-400 text-sm mt-1">Currently engaged</p>
-              </div>
-            </div>
-            <div className="mt-8">
-              <h3 className="text-xl font-semibold text-white mb-4">
-                Latest Quiz Submissions
-              </h3>
-              <ul className="space-y-3">
-                <li className="flex items-center justify-between text-gray-300 bg-gray-900/30 p-3 rounded-lg border border-gray-700">
-                  <span>Alice Johnson - Algebra Chapter 1 Quiz (92%)</span>
-                  <span className="text-sm text-green-400">Excellent!</span>
-                </li>
-                <li className="flex items-center justify-between text-gray-300 bg-gray-900/30 p-3 rounded-lg border border-gray-700">
-                  <span>Bob Smith - Geometry Unit 2 Test (78%)</span>
-                  <span className="text-sm text-yellow-400">Good</span>
-                </li>
-                <li className="flex items-center justify-between text-gray-300 bg-gray-900/30 p-3 rounded-lg border border-gray-700">
-                  <span>Charlie Brown - Calculus Limits Intro (65%)</span>
-                  <span className="text-sm text-red-400">Needs review</span>
-                </li>
-              </ul>
-              <p className="text-gray-500 text-sm mt-4 text-center">
-                View full report for detailed insights.
-              </p>
-            </div>
+        {/* Quick Actions / Navigation Cards */}
+        <section
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
+          style={{ display: "flex", justifyContent: "center" }}
+        >
+          {/* Card to navigate to Your Quizzes Page */}
+          <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/20 transition-all duration-300">
+            <ClipboardList className="w-12 h-12 text-pink-400 mb-3" />
+            <h3 className="text-2xl font-semibold mb-2">Manage Quizzes</h3>
+            <p className="text-gray-400">
+              View, edit, publish, and delete your created quizzes.
+            </p>
+            <Link
+              to="/teacher/quizzes"
+              className="mt-4 bg-gradient-to-r from-pink-600 to-purple-600 text-white px-5 py-2 rounded-full hover:from-pink-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+            >
+              View All Quizzes
+            </Link>
           </div>
         </section>
 
-        {/* CTA Section (Reused from Landing Page, adapted for teacher) */}
-        <section className="px-6 py-20 text-center">
-          <div className="max-w-4xl mx-auto">
+        {/* CTA Section */}
+        <section
+          className="px-6 py-20 text-center"
+          style={{ display: "flex", justifyContent: "center" }}
+        >
+          <div
+            className="max-w-4xl mx-auto"
+            style={{ display: "flex", justifyContent: "center" }}
+          >
             <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl p-12 border border-purple-500/30 backdrop-blur-sm">
               <h2 className="text-4xl font-bold text-white mb-4">
                 Empower Your Classroom with EduForce AI!
@@ -355,12 +233,128 @@ const TeacherHomePage = () => {
             </div>
           </div>
         </section>
-
-        {/* Footer (Simplified from Landing Page, optional if you have a global footer) */}
-        <footer className="px-6 py-8 border-t border-gray-800 text-center">
-          <p className="text-gray-400">© 2025 EduForce. All rights reserved.</p>
-        </footer>
       </div>
+
+      {/* Generate Quiz Modal */}
+      {showGenerateQuizModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md relative border border-purple-700 shadow-xl">
+            <button
+              onClick={() => setShowGenerateQuizModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-3xl font-bold text-white mb-6 text-center">
+              Generate AI Quiz
+            </h2>
+            <form onSubmit={handleGenerateQuizSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="pdfFile"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Upload PDF
+                </label>
+                <input
+                  type="file"
+                  id="pdfFile"
+                  accept="application/pdf"
+                  onChange={handleFileChange}
+                  ref={fileInputRef}
+                  className="block w-full text-sm text-gray-400
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-full file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-purple-500 file:text-white
+                    hover:file:bg-purple-600"
+                />
+                {pdfFile && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Selected: {pdfFile.name}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="subject"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Subject Name
+                </label>
+                <input
+                  type="text"
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="e.g., Physics, History, Algebra"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="topic"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Topic
+                </label>
+                <input
+                  type="text"
+                  id="topic"
+                  value={userProvidedTopic}
+                  onChange={(e) => setUserProvidedTopic(e.target.value)}
+                  placeholder="e.g., Newton's Laws, World War II, Quadratic Equations"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="numQuestions"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Number of Questions (1-25)
+                </label>
+                <input
+                  type="number"
+                  id="numQuestions"
+                  value={numQuestions}
+                  onChange={(e) => setNumQuestions(e.target.value)}
+                  min="1"
+                  max="25"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  required
+                />
+              </div>
+
+              {generateError && (
+                <p className="text-red-400 text-sm text-center">
+                  {generateError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-md font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 flex items-center justify-center"
+                disabled={generateLoading}
+              >
+                {generateLoading ? (
+                  <>
+                    <Loader className="w-5 h-5 mr-3 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Quiz"
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

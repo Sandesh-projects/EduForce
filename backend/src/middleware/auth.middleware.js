@@ -33,11 +33,43 @@ const protect = async (req, res, next) => {
             console.error(error);
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
-    }
-
-    if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+    } else { // Added else block to handle case where no token is provided but header exists
+        if (!token) {
+            res.status(401).json({ message: 'Not authorized, no token' });
+        }
     }
 };
 
-export { protect };
+/**
+ * @function authorize
+ * @description Middleware to authorize users based on roles.
+ * @param {Array<string>} roles - Array of roles allowed to access the route (e.g., ['teacher', 'admin'])
+ * @returns {function} Express middleware function
+ */
+const authorize = (roles = []) => {
+    // roles can be a single string or an array of strings
+    if (typeof roles === 'string') {
+        roles = [roles];
+    }
+
+    return (req, res, next) => {
+        // req.user is set by the 'protect' middleware
+        if (!req.user) {
+            // This case should ideally be caught by 'protect' before 'authorize' runs,
+            // but it's a good safeguard.
+            return res.status(401).json({ message: 'Not authorized, user not authenticated' });
+        }
+
+        // Check if the user's role is included in the allowed roles
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                message: `User role ${req.user.role} is not authorized to access this route.`
+            });
+        }
+
+        next(); // User is authorized, proceed
+    };
+};
+
+// Export both protect and authorize
+export { protect, authorize };

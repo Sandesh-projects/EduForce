@@ -1,17 +1,31 @@
 // backend/src/routes/quiz.routes.js
 import express from 'express';
-import { generateQuizFromPdf, getTeacherQuizzes, getQuizById } from '../controllers/quiz.controller.js';
-import { protect } from '../middleware/auth.middleware.js'; // Import protect middleware
+// Correct the import name from 'createQuiz' to 'generateQuizFromPdf'
+import {
+    generateQuizFromPdf, // <--- Corrected name here
+    getTeacherQuizzes,
+    getQuizById,
+    deleteQuizById, // Ensure this matches the exported name in controller
+    updateQuiz,
+} from '../controllers/quiz.controller.js';
+// Ensure both protect and authorize are imported
+import { protect, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
-// All quiz routes should ideally be protected
-router.post('/generate', protect, generateQuizFromPdf); // Protect this route: only authenticated users can generate
-router.get('/my-quizzes', protect, getTeacherQuizzes); // Get quizzes for the logged-in teacher
-router.get('/:id', protect, getQuizById); // Get a specific quiz by ID
+// Route for generating/creating a quiz
+router.post('/generate', protect, authorize(['teacher']), generateQuizFromPdf); // <--- Use corrected name here
 
-// You might add routes for updating and deleting quizzes too
-// router.put('/:id', protect, updateQuiz);
-// router.delete('/:id', protect, deleteQuiz);
+// Route for fetching all quizzes for the teacher
+router.get('/teacher', protect, authorize(['teacher']), getTeacherQuizzes); // Using /teacher for clarity
+
+// Route for fetching a single quiz by ID (for review/edit)
+router.get('/:id', protect, authorize(['teacher']), getQuizById); // Only teacher should get full quiz data
+
+// Route for deleting a quiz by ID
+router.delete('/:id', protect, authorize(['teacher']), deleteQuizById); // Make sure name matches export
+
+// Route for updating a quiz by ID
+router.put('/:id', protect, authorize(['teacher']), updateQuiz);
 
 export default router;

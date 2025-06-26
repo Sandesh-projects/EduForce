@@ -1,37 +1,11 @@
 // backend/src/models/quiz.model.js
 import mongoose from 'mongoose';
 
-/**
- * @typedef QuizQuestionOption
- * @property {string} id - Unique ID for the option.
- * @property {string} text - Text of the option.
- */
-
-/**
- * @typedef QuizQuestion
- * @property {string} id - Unique ID for the question.
- * @property {string} questionText - The text of the question.
- * @property {QuizQuestionOption[]} options - Array of answer options.
- * @property {string} correctAnswerId - ID of the correct option.
- * @property {string} explanation - Explanation for the correct answer.
- * @property {('Easy'|'Medium'|'Hard')} difficulty - Difficulty level.
- * @property {string} topic - Specific topic covered.
- */
-
-/**
- * @typedef Quiz
- * @property {mongoose.Schema.Types.ObjectId} teacher - The ID of the teacher who created the quiz. Required.
- * @property {string} quizTitle - Title of the quiz.
- * @property {string} quizInstructions - Instructions for the quiz.
- * @property {QuizQuestion[]} questions - Array of quiz questions.
- * @property {Date} createdAt - Timestamp of creation.
- * @property {Date} updatedAt - Timestamp of last update.
- */
 const quizSchema = mongoose.Schema(
   {
     teacher: {
-      type: mongoose.Schema.Types.ObjectId, // Links to the User model
-      ref: 'User', // Reference to the 'User' model
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       required: [true, 'Quiz must belong to a teacher'],
     },
     quizTitle: {
@@ -39,17 +13,36 @@ const quizSchema = mongoose.Schema(
       required: [true, 'Quiz title is required'],
       trim: true,
     },
+    // New fields to store user-provided subject and topic
+    subject: {
+      type: String,
+      required: [true, 'Subject is required'],
+      trim: true,
+    },
+    userProvidedTopic: { // Renamed from 'topic' to avoid conflict with 'topic' in questions array
+      type: String,
+      required: [true, 'Topic is required'],
+      trim: true,
+    },
+    quizCode: { // New field for the unique quiz code
+      type: String,
+      required: [true, 'Quiz code is required'],
+      unique: true, // Ensure quiz codes are unique
+      trim: true,
+      minlength: 6, // Minimum length for the code
+      maxlength: 10, // Maximum length for the code
+    },
     quizInstructions: {
       type: String,
       default: 'Answer carefully based on the provided text.',
     },
     questions: [
       {
-        id: { type: String, required: true }, // Unique ID for question (from Gemini)
+        id: { type: String, required: true },
         questionText: { type: String, required: true },
         options: [
           {
-            id: { type: String, required: true }, // Unique ID for option
+            id: { type: String, required: true },
             text: { type: String, required: true },
           },
         ],
@@ -60,14 +53,12 @@ const quizSchema = mongoose.Schema(
           enum: ['Easy', 'Medium', 'Hard'],
           default: 'Medium',
         },
-        topic: { type: String },
+        topic: { type: String }, // This 'topic' is for individual question topics from Gemini
       },
     ],
-    // You might add a field for the original PDF URL/filename here later
-    // originalPdfRef: { type: String },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 

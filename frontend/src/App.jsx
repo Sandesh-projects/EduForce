@@ -1,91 +1,125 @@
 // src/App.jsx
 
 import { Route, Routes, Navigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+// Import your pages and components
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Header from "./components/Header";
 import Register from "./pages/Register";
-// Assuming you have these pages, as per previous discussion
 import StudentHomePage from "./pages/StudentHomePage";
 import TeacherHomePage from "./pages/TeacherHomePage";
-import PrivateRoute from "./components/PrivateRoute"; // Ensure this is using useAuth context
-import { AuthProvider, useAuth } from "./context/AuthContext"; // Import AuthProvider and useAuth
+import TeacherQuizzesPage from "./pages/TeacherQuizzesPage";
+import QuizReportPage from "./pages/QuizReportPage"; // Import the new QuizReportPage
+import PrivateRoute from "./components/PrivateRoute";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // App component now acts as the root for AuthProvider
 function App() {
   return (
-    // Wrap the entire application with AuthProvider
     <AuthProvider>
-      <AppContent /> {/* Render a child component that consumes context */}
+      <AppContent />
     </AuthProvider>
   );
 }
 
 // New component to encapsulate routes and consume AuthContext
 const AppContent = () => {
-  const { isLoggedIn, user, loading } = useAuth(); // Consume auth context
+  const { isLoggedIn, user, loading } = useAuth();
 
-  // If still loading initial auth status, don't render routes yet
-  // This ensures the correct initial route is determined after auth check
   if (loading) {
-    return null; // AuthProvider itself shows a loading spinner
+    return null;
   }
 
-  // Determine initial redirect path based on authenticated user's role
   const getInitialRedirectPath = () => {
     if (isLoggedIn && user) {
       if (user.role === "student") {
-        return "/student-home";
+        return "/student/home";
       } else if (user.role === "teacher") {
-        return "/teacher-home";
+        return "/teacher/home";
       }
-      // Fallback if role is authenticated but not student/teacher
-      return "/dashboard"; // Or wherever a general logged-in user goes
+      return "/dashboard";
     }
-    return "/"; // Default to landing page if not authenticated
+    return "/";
   };
 
   return (
     <>
-      <Header /> {/* Header will now consume AuthContext */}
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+      <Header />
+      <main>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* Dynamic Root Route: Redirects based on login status and role */}
-        <Route
-          path="/"
-          element={
-            isLoggedIn ? (
-              <Navigate to={getInitialRedirectPath()} replace />
-            ) : (
-              <LandingPage />
-            )
-          }
-        />
+          {/* Dynamic Root Route: Redirects based on login status and role */}
+          <Route
+            path="/"
+            element={
+              isLoggedIn ? (
+                <Navigate to={getInitialRedirectPath()} replace />
+              ) : (
+                <LandingPage />
+              )
+            }
+          />
 
-        {/* Protected Routes using PrivateRoute component */}
-        <Route
-          path="/student-home"
-          element={
-            <PrivateRoute requiredRole="student">
-              <StudentHomePage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/teacher-home"
-          element={
-            <PrivateRoute requiredRole="teacher">
-              <TeacherHomePage />
-            </PrivateRoute>
-          }
-        />
+          {/* Protected Routes using PrivateRoute component */}
+          {/* Teacher Home Page */}
+          <Route
+            path="/teacher/home"
+            element={
+              <PrivateRoute requiredRole="teacher">
+                <TeacherHomePage />
+              </PrivateRoute>
+            }
+          />
+          {/* Teacher Quizzes Page */}
+          <Route
+            path="/teacher/quizzes"
+            element={
+              <PrivateRoute requiredRole="teacher">
+                <TeacherQuizzesPage />
+              </PrivateRoute>
+            }
+          />
+          {/* NEW Route for Quiz Report Page */}
+          <Route
+            path="/teacher/quizzes/:quizId/report" // Dynamic segment for quiz ID
+            element={
+              <PrivateRoute requiredRole="teacher">
+                <QuizReportPage />
+              </PrivateRoute>
+            }
+          />
 
-        {/* Fallback route for any undefined paths */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          {/* Student Home Page */}
+          <Route
+            path="/student/home"
+            element={
+              <PrivateRoute requiredRole="student">
+                <StudentHomePage />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Fallback route for any undefined paths */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </>
   );
 };
