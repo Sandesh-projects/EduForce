@@ -1,5 +1,4 @@
-// src/App.jsx
-
+// frontend/src/App.jsx
 import { Route, Routes, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -12,9 +11,13 @@ import Register from "./pages/Register";
 import StudentHomePage from "./pages/StudentHomePage";
 import TeacherHomePage from "./pages/TeacherHomePage";
 import TeacherQuizzesPage from "./pages/TeacherQuizzesPage";
-import QuizReportPage from "./pages/QuizReportPage"; // Import the new QuizReportPage
+import QuizReportPage from "./pages/QuizReportPage";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// New imports for student quiz features
+import StudentQuizInventoryPage from "./pages/StudentQuizInventoryPage";
+import StudentTakeQuizPage from "./pages/StudentTakeQuizPage";
 
 // App component now acts as the root for AuthProvider
 function App() {
@@ -67,7 +70,7 @@ const AppContent = () => {
           />
 
           {/* Protected Routes using PrivateRoute component */}
-          {/* Teacher Home Page */}
+          {/* Teacher Routes */}
           <Route
             path="/teacher/home"
             element={
@@ -76,7 +79,6 @@ const AppContent = () => {
               </PrivateRoute>
             }
           />
-          {/* Teacher Quizzes Page */}
           <Route
             path="/teacher/quizzes"
             element={
@@ -85,9 +87,8 @@ const AppContent = () => {
               </PrivateRoute>
             }
           />
-          {/* NEW Route for Quiz Report Page */}
           <Route
-            path="/teacher/quizzes/:quizId/report" // Dynamic segment for quiz ID
+            path="/teacher/quizzes/:quizId/report"
             element={
               <PrivateRoute requiredRole="teacher">
                 <QuizReportPage />
@@ -95,12 +96,39 @@ const AppContent = () => {
             }
           />
 
-          {/* Student Home Page */}
+          {/* Student Routes */}
           <Route
             path="/student/home"
             element={
               <PrivateRoute requiredRole="student">
                 <StudentHomePage />
+              </PrivateRoute>
+            }
+          />
+          {/* New Student Quiz Inventory Page */}
+          <Route
+            path="/student/quizzes/inventory"
+            element={
+              <PrivateRoute requiredRole="student">
+                <StudentQuizInventoryPage />
+              </PrivateRoute>
+            }
+          />
+          {/* New Student Take Quiz Page */}
+          <Route
+            path="/student/take-quiz/:quizCode" // Dynamic segment for quiz code
+            element={
+              <PrivateRoute requiredRole="student">
+                <StudentTakeQuizPage />
+              </PrivateRoute>
+            }
+          />
+          {/* Student Quiz Report Page (Using existing QuizReportPage but for student attempts) */}
+          <Route
+            path="/student/quizzes/report/:attemptId" // Dynamic segment for quiz attempt ID
+            element={
+              <PrivateRoute requiredRole="student">
+                <QuizReportPage />
               </PrivateRoute>
             }
           />

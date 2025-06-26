@@ -7,6 +7,11 @@ import {
     getQuizById,
     deleteQuizById, // Ensure this matches the exported name in controller
     updateQuiz,
+    getPublishedQuizzes,
+    getQuizByCode,
+    submitQuizAttempt,
+    getQuizAttemptsByStudent,
+    getQuizAttemptById,
 } from '../controllers/quiz.controller.js';
 // Ensure both protect and authorize are imported
 import { protect, authorize } from '../middleware/auth.middleware.js';
@@ -27,5 +32,11 @@ router.delete('/:id', protect, authorize(['teacher']), deleteQuizById); // Make 
 
 // Route for updating a quiz by ID
 router.put('/:id', protect, authorize(['teacher']), updateQuiz);
+
+router.get('/student/published', protect, authorize(['student']), getPublishedQuizzes); // List all published quizzes available for students
+router.get('/student/take/:quizCode', protect, authorize(['student']), getQuizByCode); // Get a specific quiz by code to take
+router.post('/student/submit', protect, authorize(['student']), submitQuizAttempt); // Submit a quiz attempt
+router.get('/student/attempts', protect, authorize(['student']), getQuizAttemptsByStudent); // Get all attempts for a student
+router.get('/student/attempts/:attemptId', protect, authorize(['student']), getQuizAttemptById); // Get a specific quiz attempt report
 
 export default router;
