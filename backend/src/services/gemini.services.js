@@ -1,6 +1,6 @@
 // backend/src/services/gemini.services.js
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
-import 'dotenv/config';
+import 'dotenv/config'; // Ensure dotenv is configured to load environment variables
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -89,9 +89,8 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         const response = await result.response;
         let text = response.text();
 
-        console.log("Raw Gemini response text (start):", text.substring(0, Math.min(text.length, 500)) + (text.length > 500 ? '...' : ''));
-        console.log("Raw Gemini response text (end):", text.substring(Math.max(0, text.length - 500)) + (text.length > 500 ? '...' : ''));
-
+        // Log the full raw response to identify if truncation is happening at the API level
+        console.log("Full Raw Gemini response text:\n", text);
 
         let jsonString = text;
 
@@ -113,7 +112,7 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         } else {
             // If we can't even find a valid brace pair, it's severely malformed
             console.error("Gemini response does not contain a discernible JSON object after initial markdown strip.");
-            console.error("Problematic JSON string before final cleanup:", jsonString);
+            console.error("Problematic JSON string before final cleanup (full content):\n", jsonString); // Log full content for inspection
             throw new Error("Gemini response is not a valid JSON string and could not be sanitized.");
         }
 
@@ -134,25 +133,25 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         jsonString = jsonString.replace(/,\s*([\]}])/g, '$1');
 
 
-        console.log("Cleaned JSON string (start):", jsonString.substring(0, Math.min(jsonString.length, 500)) + (jsonString.length > 500 ? '...' : ''));
-        console.log("Cleaned JSON string (end):", jsonString.substring(Math.max(0, jsonString.length - 500)) + (jsonString.length > 500 ? '...' : ''));
+        console.log("Cleaned JSON string (full content):\n", jsonString);
 
         let mcqsData;
         try {
             mcqsData = JSON.parse(jsonString);
         } catch (parseError) {
-            console.error("Failed to parse JSON from Gemini response:", parseError);
-            console.error("Problematic JSON string (full content):\n", jsonString); // Log the full string
+            console.error("Failed to parse JSON from Gemini response (after cleanup):", parseError);
+            console.error("Problematic JSON string (full content) causing parse error:\n", jsonString); // Log the full string
             throw new Error("Failed to parse Gemini's MCQ response as JSON. Please ensure Gemini outputs valid JSON.");
         }
 
         if (mcqsData.questions && mcqsData.questions.length !== validatedNumQuestions) {
             console.warn(`Gemini generated ${mcqsData.questions.length} questions, but ${validatedNumQuestions} were requested.`);
+            // Optionally, you might want to slice or re-request if the count is critical
         }
         return mcqsData;
 
     } catch (error) {
-        console.error('Error calling Gemini API:', error);
-        throw new Error(`Failed to generate MCQs: ${error.message}. Ensure your API key is correct and network is stable.`);
+        console.error('Error calling Gemini API for MCQ generation:', error);
+        throw new Error(`Failed to generate MCQs: ${error.message}. Ensure your API key is correct and network is stable. Also check the format of the PDF text content.`);
     }
 };

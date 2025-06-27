@@ -1,11 +1,13 @@
 // backend/src/controllers/quiz.controller.js
 import Quiz from '../models/quiz.model.js';
 import QuizAttempt from '../models/QuizAttempt.model.js'; // Import QuizAttempt model
-import { parsePdfAndGenerateMcqs } from '../services/pdfParse.js'; // Import parsePdfAndGenerateMcqs function (for text extraction)
+import User from '../models/auth.model.js'; // Import User model from auth.model.js (Assuming you have this import for user details)
+import { extractTextFromPdf } from '../services/pdfParse.js'; // <-- CORRECTED IMPORT: USE extractTextFromPdf
 import { generateMCQsFromText } from '../services/gemini.services.js'; // Import generateMCQsFromText from your main Gemini service
 import { generateQuizAttemptAnalysis } from '../services/gemini.services.student.submit.js'; // Import new analysis service
 import randomstring from 'randomstring';
 import asyncHandler from 'express-async-handler'; // Import express-async-handler
+import mongoose from 'mongoose'; // Ensure mongoose is imported for ObjectId in aggregate
 
 /**
  * Helper function to generate a unique quiz code
@@ -44,16 +46,20 @@ export const generateQuizFromPdf = asyncHandler(async (req, res) => {
     }
 
     try {
-        const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-        const textContent = await parsePdfAndGenerateMcqs(pdfBuffer); // Use parsePdfAndGenerateMcqs for text extraction
+        // --- CRITICAL FIX APPLIED HERE ---
+        // REMOVED THE LINE: const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+        // Now directly passing the pdfBase64 (string) to extractTextFromPdf.
+        // The pdfParse.js service is responsible for handling the Buffer conversion internally.
+        const textContent = await extractTextFromPdf(pdfBase64); // <-- CORRECTED CALL: Pass pdfBase64 string to extractTextFromPdf
 
-        if (!textContent || textContent.trim().length === 0) {
+        // This check is now correctly applied to the string output from extractTextFromPdf
+        if (typeof textContent !== 'string' || textContent.trim().length === 0) {
             res.status(400);
-            throw new Error('Could not extract text from PDF. Please ensure the PDF contains selectable text.');
+            throw new Error('Could not extract meaningful text from PDF. Please ensure the PDF contains selectable text.');
         }
 
         const quizCode = await generateUniqueQuizCode();
-        // Call generateMCQsFromText with the extracted text
+        // Call generateMCQsFromText with the extracted text content (which is now a string)
         const mcqsData = await generateMCQsFromText(textContent, numQuestions, subject, userProvidedTopic);
 
         if (!mcqsData || !mcqsData.questions || mcqsData.questions.length === 0) {
@@ -122,19 +128,50 @@ export const getQuizById = asyncHandler(async (req, res) => {
             throw new Error('Quiz not found.');
         }
 
-        if (quiz.teacher.toString() !== userId.toString()) {
+        // Allow teachers to access their own quizzes (for editing/reviewing)
+        // Allow students to access published quizzes (without correct answers)
+        if (req.user.role === 'teacher') {
+            if (quiz.teacher.toString() !== userId.toString()) {
+                res.status(403);
+                throw new Error('Not authorized to access this quiz.');
+            }
+        } else if (req.user.role === 'student') {
+            if (!quiz.published) {
+                res.status(403);
+                throw new Error('Quiz is not published and cannot be accessed by students.');
+            }
+            // If it's a student, filter out correct answers before sending
+            const quizForStudent = {
+                _id: quiz._id,
+                quizTitle: quiz.quizTitle,
+                quizInstructions: quiz.quizInstructions,
+                subject: quiz.subject,
+                userProvidedTopic: quiz.userProvidedTopic,
+                quizCode: quiz.quizCode,
+                questions: quiz.questions.map(q => ({
+                    id: q.id,
+                    questionText: q.questionText,
+                    options: q.options,
+                    // DO NOT SEND correctAnswerId HERE
+                })),
+            };
+            return res.status(200).json(quizForStudent);
+        } else {
+            // Catch-all for other roles if they exist
             res.status(403);
             throw new Error('Not authorized to access this quiz.');
         }
 
+        // If the user is the teacher, return the full quiz object
         res.status(200).json(quiz);
     } catch (error) {
         console.error('Error fetching quiz by ID:', error);
         if (!res.headersSent) {
-            res.status(500).json({ message: 'Failed to retrieve quiz.' });
+            res.status(error.statusCode || 500).json({ message: error.message || 'Failed to retrieve quiz.' });
         }
     }
 });
+
 
 /**
  * @function deleteQuizById
@@ -193,6 +230,8 @@ export const updateQuiz = asyncHandler(async (req, res) => {
         quiz.userProvidedTopic = updatedQuizData.userProvidedTopic || quiz.userProvidedTopic;
         quiz.quizInstructions = updatedQuizData.quizInstructions || quiz.quizInstructions;
         quiz.questions = updatedQuizData.questions; // Replace the questions array entirely
+        quiz.published = typeof updatedQuizData.published === 'boolean' ? updatedQuizData.published : quiz.published; // Allow updating published status
+
 
         // IMPORTANT: Mark 'questions' array as modified if you're replacing it directly
         quiz.markModified('questions');
@@ -349,8 +388,8 @@ export const submitQuizAttempt = asyncHandler(async (req, res) => {
 export const getQuizAttemptsByStudent = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
     const attempts = await QuizAttempt.find({ student: studentId })
-                                      .sort({ submittedAt: -1 })
-                                      .select('quizTitle quizSubject quizTopic score totalQuestions percentage submittedAt isSuspicious');
+                                   .sort({ submittedAt: -1 })
+                                   .select('quizTitle quizSubject quizTopic score totalQuestions percentage submittedAt isSuspicious');
     res.json(attempts);
 });
 
@@ -362,7 +401,7 @@ export const getQuizAttemptById = asyncHandler(async (req, res) => {
     const studentId = req.user.id;
 
     const attempt = await QuizAttempt.findOne({ _id: attemptId, student: studentId })
-                                     .populate('quiz', 'quizTitle questions'); // Populate quiz details if needed
+                                   .populate('quiz', 'quizTitle questions'); // Populate quiz details if needed
 
     if (!attempt) {
         res.status(404);
@@ -370,4 +409,146 @@ export const getQuizAttemptById = asyncHandler(async (req, res) => {
     }
 
     res.json(attempt);
+});
+
+
+// --- NEW TEACHER ROUTES ---
+
+// @desc     Get all quiz attempts for a specific quiz (for teacher's report)
+// @route    GET /api/quizzes/:quizId/attempts-by-quiz
+// @access   Private/Teacher
+export const getQuizAttemptsForTeacherByQuizId = asyncHandler(async (req, res) => {
+    const { quizId } = req.params;
+    const teacherId = req.user.id;
+
+    // First, verify that the quiz belongs to the teacher
+    const quiz = await Quiz.findOne({ _id: quizId, teacher: teacherId });
+
+    if (!quiz) {
+        res.status(404);
+        throw new Error('Quiz not found or you are not authorized to view reports for this quiz.');
+    }
+
+    // Now, fetch all attempts for this quiz, populating student details
+    const attempts = await QuizAttempt.find({ quiz: quizId })
+                                     .populate('student', 'firstName lastName email') // Populate student's name
+                                     .sort({ submittedAt: 1 }); // Sort by submission date
+
+    // Map attempts to include student's full name for easier display
+    const formattedAttempts = attempts.map(attempt => ({
+        _id: attempt._id,
+        studentId: attempt.student._id,
+        // Now using firstName and lastName from the User model (auth.model.js)
+        studentName: `${attempt.student.firstName} ${attempt.student.lastName}`.trim(),
+        studentEmail: attempt.student.email,
+        quizTitle: attempt.quizTitle,
+        quizSubject: attempt.quizSubject,
+        quizTopic: attempt.quizTopic,
+        score: attempt.score,
+        totalQuestions: attempt.totalQuestions,
+        percentage: attempt.percentage,
+        isSuspicious: attempt.isSuspicious,
+        submittedAt: attempt.submittedAt,
+        geminiAnalytics: attempt.geminiAnalytics,
+        // Add any other fields you need for the report table
+    }));
+
+    res.status(200).json(formattedAttempts);
+});
+
+// @desc    Get a list of students who have attempted a specific quiz (for Teacher)
+// @route   GET /api/quizzes/:quizId/attempts/students
+// @access  Private/Teacher
+export const getStudentsForQuizAttempts = asyncHandler(async (req, res) => {
+  const { quizId } = req.params;
+  const teacherId = req.user._id; // Teacher's ID from authenticated user
+
+  // First, verify that the quiz belongs to the teacher
+  const quiz = await Quiz.findById(quizId);
+  if (!quiz || quiz.teacher.toString() !== teacherId.toString()) {
+    res.status(404);
+    throw new Error('Quiz not found or you are not authorized to view its attempts.');
+  }
+
+  // Find all quiz attempts for this quizId
+  // Group by student and get the latest attempt for each student
+  const studentAttempts = await QuizAttempt.aggregate([
+    { $match: { quiz: new mongoose.Types.ObjectId(quizId) } }, // Match attempts for the specific quiz
+    {
+      $sort: { submittedAt: -1 } // Sort by submittedAt in descending order to get the latest attempt first
+    },
+    {
+      $group: {
+        _id: '$student', // Group by student
+        latestAttemptId: { $first: '$_id' }, // Get the ID of the latest attempt
+        studentName: { $first: '$student' }, // This will be the student ObjectId, to be populated
+        score: { $first: '$score' }, // Get score of latest attempt
+        totalQuestions: { $first: '$totalQuestions' }, // Get totalQuestions of latest attempt
+        percentage: { $first: '$percentage' }, // Get percentage of latest attempt
+        isSuspicious: { $first: '$isSuspicious' }, // Get suspicious status
+        submittedAt: { $first: '$submittedAt' }, // Get submission date
+      }
+    },
+    {
+      $lookup: { // Populate student details
+        from: 'users', // Collection name for User model
+        localField: '_id', // Field from the input documents
+        foreignField: '_id', // Field from the "users" collection
+        as: 'studentInfo' // Array field to add to the input documents
+      }
+    },
+    {
+      $unwind: '$studentInfo' // Deconstruct the studentInfo array
+    },
+    {
+      $project: { // Shape the output
+        _id: '$latestAttemptId', // Use the latest attempt ID as the main _id
+        studentId: '$_id', // Keep studentId if needed
+        studentName: { $concat: ['$studentInfo.firstName', ' ', '$studentInfo.lastName'] }, // Combine first and last name
+        email: '$studentInfo.email',
+        score: 1,
+        totalQuestions: 1,
+        percentage: 1,
+        isSuspicious: 1,
+        submittedAt: 1,
+      }
+    },
+    {
+      $sort: { submittedAt: -1 } // Sort final results by submission date
+    }
+  ]);
+
+  if (studentAttempts.length === 0) {
+    return res.status(200).json([]); // Return empty array if no attempts
+  }
+
+  res.status(200).json(studentAttempts);
+});
+
+
+// @desc    Get a specific quiz attempt report for a teacher
+// @route   GET /api/quizzes/teacher/attempts/:attemptId
+// @access  Private/Teacher
+export const getStudentQuizAttemptByIdForTeacher = asyncHandler(async (req, res) => {
+  const { attemptId } = req.params;
+  const teacherId = req.user._id;
+
+  const attempt = await QuizAttempt.findById(attemptId)
+    .populate('quiz', 'teacher') // Populate the quiz to check its teacher
+    .populate('student', 'firstName lastName email'); // Populate student details
+
+  if (!attempt) {
+    res.status(404);
+    throw new Error('Quiz attempt not found.');
+  }
+
+  // Ensure the teacher is authorized to view this attempt (they own the quiz)
+  if (!attempt.quiz || attempt.quiz.teacher.toString() !== teacherId.toString()) {
+    res.status(403); // Forbidden
+    throw new Error('Not authorized to view this quiz attempt.');
+  }
+
+  // If needed, you can re-run Gemini analytics here or just return the stored one
+  // For simplicity, we'll return the stored geminiAnalytics
+  res.status(200).json(attempt);
 });
