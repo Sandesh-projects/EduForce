@@ -59,10 +59,9 @@ const TeacherQuizzesPage = () => {
     setSelectedQuiz(quiz);
   };
 
-  // REMOVED handlePublishToggle as per new requirement
-
   const handleViewReport = (quizId) => {
-    navigate(`/teacher/quizzes/${quizId}/report`); // Navigate to the new report page
+    // This navigation path MUST match the route in App.jsx
+    navigate(`/teacher/quizzes/${quizId}/report`);
   };
 
   const handleDeleteQuiz = async (quizId) => {
@@ -144,11 +143,6 @@ const TeacherQuizzesPage = () => {
           aValue = new Date(aValue);
           bValue = new Date(bValue);
         }
-        // Handle boolean sorting for isPublished (if it were still here)
-        // if (sortConfig.key === "isPublished") {
-        //   aValue = aValue ? 1 : 0;
-        //   bValue = bValue ? 1 : 0;
-        // }
 
         if (aValue < bValue) {
           return sortConfig.direction === "asc" ? -1 : 1;
@@ -329,7 +323,7 @@ const TeacherQuizzesPage = () => {
                                 <Edit className="w-5 h-5" />
                               </button>
                               <button
-                                onClick={() => handleViewReport(quiz._id)} // Changed to View Report
+                                onClick={() => handleViewReport(quiz._id)} // This navigates to the TeacherQuizAttemptsPage
                                 className="text-teal-400 hover:text-teal-300 p-1 rounded-full hover:bg-gray-700"
                                 title="View Quiz Report"
                               >

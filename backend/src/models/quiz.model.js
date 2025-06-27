@@ -36,9 +36,9 @@ const quizSchema = mongoose.Schema(
             type: String,
             default: 'Answer carefully based on the provided text.',
         },
-        published: { // <--- NEW FIELD: to track if a quiz is published
+        published: { // <--- MODIFIED: Default changed to true
             type: Boolean,
-            default: true, // Quizzes are unpublished by default when created
+            default: true, // Quizzes are published by default when created
         },
         questions: [
             {

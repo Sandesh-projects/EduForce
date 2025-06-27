@@ -11,13 +11,15 @@ import Register from "./pages/Register";
 import StudentHomePage from "./pages/StudentHomePage";
 import TeacherHomePage from "./pages/TeacherHomePage";
 import TeacherQuizzesPage from "./pages/TeacherQuizzesPage";
-import QuizReportPage from "./pages/QuizReportPage";
+import QuizReportPage from "./pages/QuizReportPage"; // Individual student/attempt report (generalized for teacher/student)
+import TeacherQuizAttemptsPage from "./pages/TeacherQuizAttemptsPage"; // Teacher's overview of attempts for a quiz
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // New imports for student quiz features
 import StudentQuizInventoryPage from "./pages/StudentQuizInventoryPage";
 import StudentTakeQuizPage from "./pages/StudentTakeQuizPage";
+import StudentQuizAttemptReportPage from "./pages/StudentQuizAttemptReportPage"; // Specifically for detailed student report
 
 // App component now acts as the root for AuthProvider
 function App() {
@@ -33,6 +35,7 @@ const AppContent = () => {
   const { isLoggedIn, user, loading } = useAuth();
 
   if (loading) {
+    // Return null or a simple loading spinner/indicator while auth state is being determined
     return null;
   }
 
@@ -43,9 +46,10 @@ const AppContent = () => {
       } else if (user.role === "teacher") {
         return "/teacher/home";
       }
+      // Fallback for unexpected roles, though PrivateRoute should handle this for specific paths
       return "/dashboard";
     }
-    return "/";
+    return "/"; // Default to landing page if not logged in
   };
 
   return (
@@ -87,8 +91,18 @@ const AppContent = () => {
               </PrivateRoute>
             }
           />
+          {/* Teacher Quiz Attempts Overview Page (e.g., list of students who took a specific quiz) */}
           <Route
-            path="/teacher/quizzes/:quizId/report"
+            path="/teacher/quizzes/:quizId/report" // This route is for the TeacherQuizAttemptsPage
+            element={
+              <PrivateRoute requiredRole="teacher">
+                <TeacherQuizAttemptsPage />
+              </PrivateRoute>
+            }
+          />
+          {/* Teacher Individual Quiz Attempt Report Page (Teacher views a specific student's attempt report) */}
+          <Route
+            path="/teacher/attempts/:attemptId" // This route uses the generalized QuizReportPage
             element={
               <PrivateRoute requiredRole="teacher">
                 <QuizReportPage />
@@ -105,7 +119,7 @@ const AppContent = () => {
               </PrivateRoute>
             }
           />
-          {/* New Student Quiz Inventory Page */}
+          {/* Student Quiz Inventory Page (list of all quizzes student has attempted) */}
           <Route
             path="/student/quizzes/inventory"
             element={
@@ -114,26 +128,26 @@ const AppContent = () => {
               </PrivateRoute>
             }
           />
-          {/* New Student Take Quiz Page */}
+          {/* Student Take Quiz Page */}
           <Route
-            path="/student/take-quiz/:quizCode" // Dynamic segment for quiz code
+            path="/student/take-quiz/:quizCode"
             element={
               <PrivateRoute requiredRole="student">
                 <StudentTakeQuizPage />
               </PrivateRoute>
             }
           />
-          {/* Student Quiz Report Page (Using existing QuizReportPage but for student attempts) */}
+          {/* Student's Own Detailed Quiz Attempt Report Page */}
           <Route
-            path="/student/quizzes/report/:attemptId" // Dynamic segment for quiz attempt ID
+            path="/student/quizzes/report/:attemptId" // This route uses the specific StudentQuizAttemptReportPage
             element={
               <PrivateRoute requiredRole="student">
-                <QuizReportPage />
+                <StudentQuizAttemptReportPage />
               </PrivateRoute>
             }
           />
 
-          {/* Fallback route for any undefined paths */}
+          {/* Fallback route for any undefined paths, redirects to root */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

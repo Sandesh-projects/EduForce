@@ -1,16 +1,16 @@
 // backend/routes/auth.routes.js
 import express from 'express';
 import { registerUser, loginUser, getMe, logoutUser } from '../controllers/auth.controller.js';
-import { protect } from '../middleware/auth.middleware.js';
+import { authenticateUser } from '../middleware/auth.middleware.js'; // Updated import from 'protect' to 'authenticateUser'
 
 const router = express.Router();
 
-// Public routes
+// Public routes (no authentication required)
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.post('/logout', protect, logoutUser);
 
-// Protected route
-router.get('/me', protect, getMe);
+// Protected routes (authentication required)
+router.post('/logout', authenticateUser, logoutUser); // Using authenticateUser
+router.get('/me', authenticateUser, getMe);         // Using authenticateUser
 
 export default router;

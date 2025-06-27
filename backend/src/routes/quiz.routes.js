@@ -1,42 +1,57 @@
 // backend/src/routes/quiz.routes.js
 import express from 'express';
-// Correct the import name from 'createQuiz' to 'generateQuizFromPdf'
 import {
-    generateQuizFromPdf, // <--- Corrected name here
-    getTeacherQuizzes,
-    getQuizById,
-    deleteQuizById, // Ensure this matches the exported name in controller
-    updateQuiz,
-    getPublishedQuizzes,
-    getQuizByCode,
-    submitQuizAttempt,
-    getQuizAttemptsByStudent,
-    getQuizAttemptById,
+    createQuizFromPdfContent,
+    retrieveTeacherQuizzes,
+    getQuizDetailsById,
+    removeQuizById,
+    updateExistingQuiz,
+    publishOrUnpublishQuiz,
+    getAvailablePublishedQuizzes,
+    getQuizForStudentByCode,
+    submitStudentQuizAttempt,
+    getStudentQuizAttempts, // THIS IS THE KEY CONTROLLER FUNCTION FOR STUDENT INVENTORY
+    getStudentIndividualQuizReport,
+    getQuizAttemptsOverviewForTeacher,
+    getStudentsForQuizAttempts,
+    getTeacherSpecificStudentAttemptReport,
+    checkStudentQuizStatus,
 } from '../controllers/quiz.controller.js';
-// Ensure both protect and authorize are imported
-import { protect, authorize } from '../middleware/auth.middleware.js';
+// IMPORT THE NEW MIDDLEWARE FUNCTION 'allowAuthenticated'
+import { authenticateUser, restrictToRoles, allowAuthenticated } from '../middleware/auth.middleware.js';
+
+// --- !!! IMPORTANT VERIFICATION LOG !!! ---
+// WHEN YOUR BACKEND SERVER STARTS, YOU *MUST* SEE THIS EXACT MESSAGE IN ITS TERMINAL.
+// If you don't, your server is NOT loading this file.
+console.log("Loading quiz.routes.js (Version Check: 2025-06-27 FINAL FINAL - Using allowAuthenticated)");
 
 const router = express.Router();
 
-// Route for generating/creating a quiz
-router.post('/generate', protect, authorize(['teacher']), generateQuizFromPdf); // <--- Use corrected name here
+// Teacher Routes
+router.post('/generate', authenticateUser, restrictToRoles(['teacher']), createQuizFromPdfContent);
+router.get('/teacher', authenticateUser, restrictToRoles(['teacher']), retrieveTeacherQuizzes);
+router.get('/:id', authenticateUser, restrictToRoles(['teacher', 'student']), getQuizDetailsById); // Accessible by both teacher and student (if published)
+router.put('/:id', authenticateUser, restrictToRoles(['teacher']), updateExistingQuiz);
+router.delete('/:id', authenticateUser, restrictToRoles(['teacher']), removeQuizById);
+router.patch('/:id/publish', authenticateUser, restrictToRoles(['teacher']), publishOrUnpublishQuiz);
 
-// Route for fetching all quizzes for the teacher
-router.get('/teacher', protect, authorize(['teacher']), getTeacherQuizzes); // Using /teacher for clarity
+// Teacher's Quiz Report Routes
+router.get('/:quizId/attempts', authenticateUser, restrictToRoles(['teacher']), getQuizAttemptsOverviewForTeacher);
+router.get('/teacher/attempts/:attemptId', authenticateUser, restrictToRoles(['teacher']), getTeacherSpecificStudentAttemptReport);
 
-// Route for fetching a single quiz by ID (for review/edit)
-router.get('/:id', protect, authorize(['teacher']), getQuizById); // Only teacher should get full quiz data
+// Student Routes
+router.get('/student/published', authenticateUser, restrictToRoles(['student']), getAvailablePublishedQuizzes);
+router.get('/student/take/:quizCode', authenticateUser, restrictToRoles(['student']), getQuizForStudentByCode);
+router.get('/student/check-attempt/:quizCode', authenticateUser, restrictToRoles(['student']), checkStudentQuizStatus);
+router.post('/student/submit', authenticateUser, restrictToRoles(['student']), submitStudentQuizAttempt);
 
-// Route for deleting a quiz by ID
-router.delete('/:id', protect, authorize(['teacher']), deleteQuizById); // Make sure name matches export
+// *******************************************************************
+// THIS IS THE CRITICAL ROUTE FOR THE STUDENT INVENTORY PAGE.
+// It now uses the new 'allowAuthenticated' middleware, which does not check roles.
+router.get('/student/attempts', allowAuthenticated, getStudentQuizAttempts);
+// *******************************************************************
 
-// Route for updating a quiz by ID
-router.put('/:id', protect, authorize(['teacher']), updateQuiz);
-
-router.get('/student/published', protect, authorize(['student']), getPublishedQuizzes); // List all published quizzes available for students
-router.get('/student/take/:quizCode', protect, authorize(['student']), getQuizByCode); // Get a specific quiz by code to take
-router.post('/student/submit', protect, authorize(['student']), submitQuizAttempt); // Submit a quiz attempt
-router.get('/student/attempts', protect, authorize(['student']), getQuizAttemptsByStudent); // Get all attempts for a student
-router.get('/student/attempts/:attemptId', protect, authorize(['student']), getQuizAttemptById); // Get a specific quiz attempt report
+// Student's Own Detailed Quiz Attempt Report Page - also uses allowAuthenticated
+router.get('/student/attempts/:attemptId', allowAuthenticated, getStudentIndividualQuizReport);
 
 export default router;

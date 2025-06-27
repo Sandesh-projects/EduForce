@@ -2,20 +2,54 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { BookOpen, Award, ListChecks, Search, BarChart3 } from "lucide-react";
+import axios from "../axios"; // Make sure you have this axios instance configured for your API
+import {
+  BookOpen,
+  Award,
+  ListChecks,
+  Search,
+  BarChart3,
+  RotateCcw,
+} from "lucide-react"; // Added RotateCcw icon
 
 const StudentHomePage = () => {
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(""); // This 'subject' state isn't strictly used for the quiz lookup on the backend, only for UI input. The quizCode is the primary identifier.
   const [quizCode, setQuizCode] = useState("");
   const navigate = useNavigate();
 
-  const handleTakeTest = () => {
-    if (!subject || !quizCode) {
-      toast.error("Please enter both Subject Name and Quiz Code.");
+  const handleTakeTest = async () => {
+    if (!quizCode) {
+      // Only quizCode is strictly needed for the backend check
+      toast.error("Please enter the Quiz Code.");
       return;
     }
-    // Navigate to the quiz taking page. The quizCode will be part of the URL.
-    navigate(`/student/take-quiz/${quizCode}`);
+
+    try {
+      // Step 1: Check if the student has already attempted this quiz
+      const response = await axios.get(
+        `/api/quizzes/student/check-attempt/${quizCode.toUpperCase()}`
+      );
+
+      if (response.data.hasAttempted) {
+        toast.warn(
+          "You have already completed this quiz. You cannot re-attempt it."
+        );
+        // Optionally, you could navigate to their report for this quiz:
+        // if (response.data.lastAttemptId) {
+        //   navigate(`/student/quizzes/attempts/${response.data.lastAttemptId}`);
+        // }
+        return;
+      }
+
+      // If not attempted, proceed to the quiz taking page
+      navigate(`/student/take-quiz/${quizCode.toUpperCase()}`);
+    } catch (error) {
+      console.error("Error checking quiz attempt status:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to check quiz status. Please try again."
+      );
+    }
   };
 
   const handleViewPreviousQuizzes = () => {
@@ -40,12 +74,13 @@ const StudentHomePage = () => {
           Take a New Quiz
         </h2>
         <div className="space-y-6">
+          {/* Subject Name input is optional/informational here, as quizCode is the primary lookup */}
           <div>
             <label
               htmlFor="subjectName"
               className="block text-gray-300 text-lg font-medium mb-2"
             >
-              Subject Name
+              Subject Name (Optional)
             </label>
             <input
               type="text"
@@ -61,7 +96,7 @@ const StudentHomePage = () => {
               htmlFor="quizCode"
               className="block text-gray-300 text-lg font-medium mb-2"
             >
-              Quiz Code
+              Quiz Code <span className="text-red-400">*</span>
             </label>
             <input
               type="text"

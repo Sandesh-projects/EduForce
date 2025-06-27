@@ -4,16 +4,14 @@ import axios from "../axios"; // Corrected import path for axios
 import { toast } from "react-toastify";
 import {
   ListChecks,
-  Loader,
+  Loader, // Used for loading state
   Search,
   ArrowUpDown,
-  BarChart2, // For 'View Report' button
-  Award, // For score icon
-  RefreshCcw,
+  FileText, // Icon for View Report
+  Frown, // Icon for error state
+  RefreshCcw, // Refresh icon
   SortAsc,
   SortDesc,
-  FileText,
-  Frown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,37 +24,45 @@ const StudentQuizInventoryPage = () => {
   // State for Inventory features
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [attemptsPerPage] = useState(10);
+  const [attemptsPerPage] = useState(10); // Number of attempts to display per page
   const [sortConfig, setSortConfig] = useState({
     key: "submittedAt",
     direction: "descending",
   });
 
+  // useCallback to memoize the fetch function, preventing unnecessary re-renders
   const fetchStudentAttempts = useCallback(async () => {
-    // No user check needed here, middleware protects
     setAttemptsLoading(true);
     setAttemptsError("");
     try {
-      // API call already includes /api
+      // API call to fetch all quiz attempts for the logged-in student
       const response = await axios.get("/api/quizzes/student/attempts");
       setStudentAttempts(response.data);
     } catch (error) {
       console.error("Error fetching student attempts:", error);
-      setAttemptsError("Failed to load your quiz attempts. Please try again.");
+      // Enhanced error message to include backend message if available
+      setAttemptsError(
+        "Failed to load your quiz attempts. Please try again. " +
+          (error.response?.data?.message || error.message)
+      );
       toast.error("Failed to load your quiz attempts.");
     } finally {
       setAttemptsLoading(false);
     }
-  }, []);
+  }, []); // Empty dependency array means this function is created once
 
+  // useEffect to call the fetch function when the component mounts
   useEffect(() => {
     fetchStudentAttempts();
-  }, [fetchStudentAttempts]);
+  }, [fetchStudentAttempts]); // Dependency on fetchStudentAttempts ensures it runs when the function itself changes (which it won't due to useCallback)
 
+  // Handler for navigating to a specific quiz attempt report
   const handleViewAttemptReport = (attemptId) => {
+    // Ensure this path matches the one defined in App.jsx
     navigate(`/student/quizzes/report/${attemptId}`);
   };
 
+  // Memoized function for filtering and sorting attempts
   const filteredAndSortedAttempts = useMemo(() => {
     let filtered = studentAttempts.filter((attempt) => {
       const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -75,20 +81,24 @@ const StudentQuizInventoryPage = () => {
         let aValue = a[sortConfig.key];
         let bValue = b[sortConfig.key];
 
-        if (
-          sortConfig.key === "submittedAt" ||
-          sortConfig.key === "createdAt"
-        ) {
+        // Convert dates to Date objects for proper comparison
+        if (sortConfig.key === "submittedAt") {
           aValue = new Date(aValue);
           bValue = new Date(bValue);
         }
-        // Ensure numeric comparison for score/percentage
-        if (typeof aValue === "number" && typeof bValue === "number") {
+        // Handle numeric comparisons (score, percentage)
+        else if (typeof aValue === "number" && typeof bValue === "number") {
           return sortConfig.direction === "ascending"
             ? aValue - bValue
             : bValue - aValue;
         }
-
+        // Handle string comparisons
+        else if (typeof aValue === "string" && typeof bValue === "string") {
+          return sortConfig.direction === "ascending"
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+        // Fallback for other types or null/undefined values
         if (aValue < bValue) {
           return sortConfig.direction === "ascending" ? -1 : 1;
         }
@@ -99,7 +109,7 @@ const StudentQuizInventoryPage = () => {
       });
     }
     return filtered;
-  }, [studentAttempts, searchTerm, sortConfig]);
+  }, [studentAttempts, searchTerm, sortConfig]); // Dependencies for memoization
 
   // Pagination logic
   const indexOfLastAttempt = currentPage * attemptsPerPage;
@@ -112,16 +122,21 @@ const StudentQuizInventoryPage = () => {
     filteredAndSortedAttempts.length / attemptsPerPage
   );
 
+  // Function to change the current page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  // Handler for sorting table columns
   const handleSort = (key) => {
     let direction = "ascending";
+    // If the same column is clicked again, reverse the sort direction
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
       direction = "descending";
     }
     setSortConfig({ key, direction });
+    setCurrentPage(1); // Reset to first page on new sort
   };
 
+  // Helper function to render sort direction indicator icon
   const renderSortIndicator = (key) => {
     if (sortConfig.key === key) {
       return sortConfig.direction === "ascending" ? (
@@ -130,7 +145,7 @@ const StudentQuizInventoryPage = () => {
         <SortDesc className="inline ml-1 w-4 h-4" />
       );
     }
-    return null;
+    return <ArrowUpDown className="inline ml-1 w-4 h-4 text-gray-500" />; // Default icon for unsorted columns
   };
 
   return (
@@ -151,7 +166,7 @@ const StudentQuizInventoryPage = () => {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1);
+                setCurrentPage(1); // Reset to first page on search
               }}
             />
           </div>
@@ -164,17 +179,26 @@ const StudentQuizInventoryPage = () => {
         </div>
 
         {attemptsLoading ? (
-          <div className="text-center py-10 text-gray-300">
-            Loading your quiz attempts...
+          <div className="text-center py-10 text-gray-300 flex flex-col items-center justify-center">
+            <Loader className="w-8 h-8 animate-spin text-purple-400 mb-3" />
+            <p className="text-xl">Loading your quiz attempts...</p>
           </div>
         ) : attemptsError ? (
           <div className="text-center py-10 text-red-400 flex flex-col items-center">
             <Frown className="w-12 h-12 mb-4" />
-            {attemptsError}
+            <p className="text-xl font-semibold">{attemptsError}</p>
+            <button
+              onClick={fetchStudentAttempts}
+              className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-semibold transition-colors duration-200"
+            >
+              Try Again
+            </button>
           </div>
         ) : filteredAndSortedAttempts.length === 0 ? (
-          <div className="text-center py-10 text-gray-300">
-            No quiz attempts found yet. Start by taking a new quiz!
+          <div className="text-center py-10 text-gray-300 flex flex-col items-center">
+            <FileText className="w-12 h-12 mb-4 text-gray-500" />
+            <p className="text-xl">No quiz attempts found yet.</p>
+            <p className="text-lg mt-2">Start by taking a new quiz!</p>
           </div>
         ) : (
           // Added overflow-x-auto to this div to make the table horizontally scrollable
@@ -191,35 +215,35 @@ const StudentQuizInventoryPage = () => {
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort("quizSubject")}
                   >
                     Subject {renderSortIndicator("quizSubject")}
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort("quizTopic")}
                   >
                     Topic {renderSortIndicator("quizTopic")}
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort("score")}
                   >
                     Score {renderSortIndicator("score")}
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort("percentage")}
                   >
                     Percentage {renderSortIndicator("percentage")}
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer hover:text-white"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort("submittedAt")}
                   >
                     Date Attempted {renderSortIndicator("submittedAt")}
