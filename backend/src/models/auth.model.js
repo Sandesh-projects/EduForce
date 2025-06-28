@@ -1,8 +1,7 @@
 // backend/src/models/auth.model.js
 
-// Change 'require' to 'import'
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs'; // Change 'require' to 'import'
+import bcrypt from 'bcryptjs';
 
 const userSchema = mongoose.Schema(
   {
@@ -25,6 +24,29 @@ const userSchema = mongoose.Schema(
       default: "student", // Default role if not specified
       required: true,
     },
+    // --- NEW OPTIONAL FIELDS ---
+    phoneNumber: {
+      type: String,
+      required: false, // Not required during registration
+      default: null, // Explicitly set default to null or undefined
+    },
+    dateOfBirth: {
+      type: Date, // Storing as Date object
+      required: false,
+      default: null,
+    },
+    bio: {
+      type: String,
+      required: false,
+      default: null,
+      maxlength: 500, // Optional: Add a max length
+    },
+    interests: {
+      type: [String], // Array of strings
+      required: false,
+      default: [], // Default to an empty array
+    },
+    // --- END NEW OPTIONAL FIELDS ---
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields
@@ -50,5 +72,4 @@ userSchema.pre("save", async function (next) {
 
 const User = mongoose.model("User", userSchema);
 
-// Export using ES Module syntax
 export default User;

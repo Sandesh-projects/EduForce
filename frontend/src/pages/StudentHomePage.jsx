@@ -26,8 +26,9 @@ const StudentHomePage = () => {
 
     try {
       // Step 1: Check if the student has already attempted this quiz
+      // UPDATED API PATH: /api/student/quizzes/check-attempt
       const response = await axios.get(
-        `/api/quizzes/student/check-attempt/${quizCode.toUpperCase()}`
+        `/api/student/quizzes/check-attempt/${quizCode.toUpperCase()}`
       );
 
       if (response.data.hasAttempted) {

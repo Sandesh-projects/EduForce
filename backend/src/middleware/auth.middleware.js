@@ -105,8 +105,6 @@ const restrictToRoles = (allowedRoles = []) => {
  * @param {function} next - Express next middleware function
  */
 const allowAuthenticated = async (req, res, next) => {
-    // Re-use the logic from authenticateUser but always call next() if token is valid
-    // This is essentially authenticateUser without any role restriction logic.
     let token;
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
@@ -119,7 +117,7 @@ const allowAuthenticated = async (req, res, next) => {
                 console.log('Authentication (allowAuthenticated) Denied: User not found for ID:', decodedToken.id);
                 return res.status(401).json({ message: 'Authentication failed: User not found.' });
             }
-            req.user.role = 'teacher';
+
             req.user = user; // Attach user data
             console.log('--- Auth Middleware (allowAuthenticated) ---');
             console.log('User Authenticated (no role check). User ID:', req.user._id, 'Role:', req.user.role);

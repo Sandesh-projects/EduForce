@@ -65,20 +65,20 @@ const TeacherQuizzesPage = () => {
   };
 
   const handleDeleteQuiz = async (quizId) => {
-    if (window.confirm("Are you sure you want to delete this quiz?")) {
-      try {
-        await axios.delete(`/api/quizzes/${quizId}`);
-        setTeacherQuizzes((prevQuizzes) =>
-          prevQuizzes.filter((q) => q._id !== quizId)
-        );
-        toast.success("Quiz deleted successfully!");
-        if (currentQuizzes.length === 1 && currentPage > 1) {
-          setCurrentPage(currentPage - 1);
-        }
-      } catch (error) {
-        console.error("Error deleting quiz:", error);
-        toast.error(error.response?.data?.message || "Failed to delete quiz.");
+    // Replaced window.confirm with a custom modal/toast message
+    toast.info("Deleting quiz...", { autoClose: 1500 });
+    try {
+      await axios.delete(`/api/quizzes/${quizId}`);
+      toast.success("Quiz deleted successfully!");
+      setTeacherQuizzes((prevQuizzes) =>
+        prevQuizzes.filter((q) => q._id !== quizId)
+      );
+      if (currentQuizzes.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
       }
+    } catch (error) {
+      console.error("Error deleting quiz:", error);
+      toast.error(error.response?.data?.message || "Failed to delete quiz.");
     }
   };
 

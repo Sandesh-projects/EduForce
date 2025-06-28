@@ -1,4 +1,5 @@
 // backend/src/routes/quiz.routes.js
+// This file now ONLY contains routes for teacher-specific quiz operations.
 import express from 'express';
 import {
     createQuizFromPdfContent,
@@ -7,23 +8,15 @@ import {
     removeQuizById,
     updateExistingQuiz,
     publishOrUnpublishQuiz,
-    getAvailablePublishedQuizzes,
-    getQuizForStudentByCode,
-    submitStudentQuizAttempt,
-    getStudentQuizAttempts, // THIS IS THE KEY CONTROLLER FUNCTION FOR STUDENT INVENTORY
-    getStudentIndividualQuizReport,
     getQuizAttemptsOverviewForTeacher,
-    getStudentsForQuizAttempts,
+    getStudentsForQuizAttempts, // Kept this one here as it's typically for teacher reports
     getTeacherSpecificStudentAttemptReport,
-    checkStudentQuizStatus,
 } from '../controllers/quiz.controller.js';
-// IMPORT THE NEW MIDDLEWARE FUNCTION 'allowAuthenticated'
-import { authenticateUser, restrictToRoles, allowAuthenticated } from '../middleware/auth.middleware.js';
+import { authenticateUser, restrictToRoles } from '../middleware/auth.middleware.js';
 
 // --- !!! IMPORTANT VERIFICATION LOG !!! ---
 // WHEN YOUR BACKEND SERVER STARTS, YOU *MUST* SEE THIS EXACT MESSAGE IN ITS TERMINAL.
-// If you don't, your server is NOT loading this file.
-console.log("Loading quiz.routes.js (Version Check: 2025-06-27 FINAL FINAL - Using allowAuthenticated)");
+console.log("Loading quiz.routes.js (Version Check: 2025-06-27 Refactor - Teacher Only Routes)");
 
 const router = express.Router();
 
@@ -38,20 +31,6 @@ router.patch('/:id/publish', authenticateUser, restrictToRoles(['teacher']), pub
 // Teacher's Quiz Report Routes
 router.get('/:quizId/attempts', authenticateUser, restrictToRoles(['teacher']), getQuizAttemptsOverviewForTeacher);
 router.get('/teacher/attempts/:attemptId', authenticateUser, restrictToRoles(['teacher']), getTeacherSpecificStudentAttemptReport);
-
-// Student Routes
-router.get('/student/published', authenticateUser, restrictToRoles(['student']), getAvailablePublishedQuizzes);
-router.get('/student/take/:quizCode', authenticateUser, restrictToRoles(['student']), getQuizForStudentByCode);
-router.get('/student/check-attempt/:quizCode', authenticateUser, restrictToRoles(['student']), checkStudentQuizStatus);
-router.post('/student/submit', authenticateUser, restrictToRoles(['student']), submitStudentQuizAttempt);
-
-// *******************************************************************
-// THIS IS THE CRITICAL ROUTE FOR THE STUDENT INVENTORY PAGE.
-// It now uses the new 'allowAuthenticated' middleware, which does not check roles.
-router.get('/student/attempts', allowAuthenticated, getStudentQuizAttempts);
-// *******************************************************************
-
-// Student's Own Detailed Quiz Attempt Report Page - also uses allowAuthenticated
-router.get('/student/attempts/:attemptId', allowAuthenticated, getStudentIndividualQuizReport);
+router.get('/:quizId/students-attempts-overview', authenticateUser, restrictToRoles(['teacher']), getStudentsForQuizAttempts); // Explicitly a teacher report route
 
 export default router;

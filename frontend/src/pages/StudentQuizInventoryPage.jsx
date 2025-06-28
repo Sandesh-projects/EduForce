@@ -36,7 +36,8 @@ const StudentQuizInventoryPage = () => {
     setAttemptsError("");
     try {
       // API call to fetch all quiz attempts for the logged-in student
-      const response = await axios.get("/api/quizzes/student/attempts");
+      // UPDATED API PATH: /api/student/quizzes/attempts
+      const response = await axios.get("/api/student/quizzes/attempts");
       setStudentAttempts(response.data);
     } catch (error) {
       console.error("Error fetching student attempts:", error);

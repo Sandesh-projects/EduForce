@@ -32,9 +32,9 @@ const StudentQuizAttemptReportPage = () => {
       setError(null);
       try {
         // Fetch the detailed quiz attempt report for the student
-        // This route is now accessible by teachers as well, if needed for testing
+        // UPDATED API PATH: /api/student/quizzes/attempts/:attemptId
         const response = await axios.get(
-          `/api/quizzes/student/attempts/${attemptId}`
+          `/api/student/quizzes/attempts/${attemptId}`
         );
         setAttemptData(response.data);
       } catch (err) {
@@ -204,9 +204,11 @@ const StudentQuizAttemptReportPage = () => {
                     <CheckCircle className="w-6 h-6 mr-2" /> Strengths
                   </h3>
                   <ul className="list-disc list-inside text-lg text-green-200">
+                    {/* FIXED: Render specific properties of the strength object */}
                     {geminiAnalytics.strengths.map((strength, index) => (
                       <li key={index} className="mb-1">
-                        {strength}
+                        <strong>{strength.topic}:</strong>{" "}
+                        {strength.performance}
                       </li>
                     ))}
                   </ul>

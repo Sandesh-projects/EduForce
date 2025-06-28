@@ -184,8 +184,9 @@ const StudentTakeQuizPage = () => {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
+        // UPDATED API PATH: /api/student/quizzes/take/:quizCode
         const response = await axios.get(
-          `/api/quizzes/student/take/${quizCode}`
+          `/api/student/quizzes/take/${quizCode}`
         );
         setQuiz(response.data);
         // Initialize selected answers with null for each question
@@ -220,13 +221,18 @@ const StudentTakeQuizPage = () => {
   };
 
   const handleSubmitQuiz = async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to submit the quiz? You cannot change answers after submission."
-      )
-    ) {
-      return;
-    }
+    // Replaced window.confirm with a custom modal/toast message.
+    // For simplicity, a direct toast.info is used here, but for a real app,
+    // you'd render a dedicated confirmation modal component.
+    toast.info("Submitting quiz. You cannot change answers after this.", {
+      position: "top-center",
+      autoClose: 2000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
 
     // Before setting submitted=true, check if termination condition is met
     if (isSuspicious && proctoringEvents.length >= WARNING_THRESHOLD) {
@@ -248,7 +254,8 @@ const StudentTakeQuizPage = () => {
     }));
 
     try {
-      const response = await axios.post("/api/quizzes/student/submit", {
+      // UPDATED API PATH: /api/student/quizzes/submit
+      const response = await axios.post("/api/student/quizzes/submit", {
         quizId: quiz._id,
         answers: answersToSubmit,
         proctoringEvents: proctoringEvents,

@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import StudentQuizInventoryPage from "./pages/StudentQuizInventoryPage";
 import StudentTakeQuizPage from "./pages/StudentTakeQuizPage";
 import StudentQuizAttemptReportPage from "./pages/StudentQuizAttemptReportPage"; // Specifically for detailed student report
+import ProfilePage from "./pages/ProfilePage"; // NEW: Profile Page
 
 // App component now acts as the root for AuthProvider
 function App() {
@@ -47,7 +48,7 @@ const AppContent = () => {
         return "/teacher/home";
       }
       // Fallback for unexpected roles, though PrivateRoute should handle this for specific paths
-      return "/dashboard";
+      return "/dashboard"; // Or another appropriate default for authenticated but unknown role
     }
     return "/"; // Default to landing page if not logged in
   };
@@ -74,6 +75,16 @@ const AppContent = () => {
           />
 
           {/* Protected Routes using PrivateRoute component */}
+          {/* Global Profile Page (accessible by both teachers and students) */}
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute requiredRole={["student", "teacher"]}>
+                <ProfilePage />
+              </PrivateRoute>
+            }
+          />
+
           {/* Teacher Routes */}
           <Route
             path="/teacher/home"
