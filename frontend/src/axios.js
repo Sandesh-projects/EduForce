@@ -5,7 +5,8 @@ import axios from 'axios';
 const instance = axios.create({
   // Use VITE_API_BASE_URL from environment variables for deployment.
   // Fallback to 'http://localhost:5000' for local development.
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
+  // baseURL:'http://localhost:5000',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 60000,
   headers: {
     'Content-Type': 'application/json',

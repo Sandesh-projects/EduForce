@@ -160,7 +160,7 @@ const TeacherHomePage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
               {/* Card for AI MCQ Generation */}
-              <div className="bg-gray-800/50 border border-purple-800 bg-purple-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-purple-500/30 transition-all duration-300">
+              <div className="bg-gray-800/50 border border-purple-800 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-purple-500/30 transition-all duration-300">
                 <Brain className="w-14 h-14 text-purple-400 mb-4" />
                 <h3 className="text-2xl font-semibold mb-3">
                   AI MCQ Generator
@@ -178,7 +178,7 @@ const TeacherHomePage = () => {
               </div>
 
               {/* Card for Subjective Test Generation */}
-              <div className="bg-gray-800/50 border border-blue-800 bg-blue-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-blue-500/30 transition-all duration-300">
+              <div className="bg-gray-800/50 border border-blue-800 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-blue-500/30 transition-all duration-300">
                 <BookText className="w-14 h-14 text-blue-400 mb-4" />
                 <h3 className="text-2xl font-semibold mb-3">
                   Subjective Test Creator
@@ -216,7 +216,7 @@ const TeacherHomePage = () => {
               Quizzes
             </h2>
             {/* Card to navigate to Your Quizzes Page */}
-            <div className="bg-gray-800/50 border border-pink-800 bg-pink-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/30 transition-all duration-300 flex-grow justify-center">
+            <div className="bg-gray-800/50 border border-pink-800 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/30 transition-all duration-300 flex-grow justify-center">
               <ClipboardList className="w-14 h-14 text-pink-400 mb-4" />
               <h3 className="text-2xl font-semibold mb-3">
                 Manage Your Quizzes
