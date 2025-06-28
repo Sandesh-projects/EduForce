@@ -2,47 +2,29 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import axios from "../axios"; // Make sure you have this axios instance configured for your API
-import {
-  BookOpen,
-  Award,
-  ListChecks,
-  Search,
-  BarChart3,
-  RotateCcw,
-} from "lucide-react"; // Added RotateCcw icon
+import axios from "../axios";
+import { BookOpen, Award, ListChecks, BarChart3 } from "lucide-react";
 
 const StudentHomePage = () => {
-  const [subject, setSubject] = useState(""); // This 'subject' state isn't strictly used for the quiz lookup on the backend, only for UI input. The quizCode is the primary identifier.
+  const [subject, setSubject] = useState("");
   const [quizCode, setQuizCode] = useState("");
   const navigate = useNavigate();
 
   const handleTakeTest = async () => {
     if (!quizCode) {
-      // Only quizCode is strictly needed for the backend check
       toast.error("Please enter the Quiz Code.");
       return;
     }
-
     try {
-      // Step 1: Check if the student has already attempted this quiz
-      // UPDATED API PATH: /api/student/quizzes/check-attempt
-      const response = await axios.get(
+      const { data } = await axios.get(
         `/api/student/quizzes/check-attempt/${quizCode.toUpperCase()}`
       );
-
-      if (response.data.hasAttempted) {
+      if (data.hasAttempted) {
         toast.warn(
           "You have already completed this quiz. You cannot re-attempt it."
         );
-        // Optionally, you could navigate to their report for this quiz:
-        // if (response.data.lastAttemptId) {
-        //   navigate(`/student/quizzes/attempts/${response.data.lastAttemptId}`);
-        // }
         return;
       }
-
-      // If not attempted, proceed to the quiz taking page
       navigate(`/student/take-quiz/${quizCode.toUpperCase()}`);
     } catch (error) {
       console.error("Error checking quiz attempt status:", error);
@@ -59,6 +41,7 @@ const StudentHomePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col items-center p-8">
+      {/* Header */}
       <div className="max-w-4xl w-full text-center py-12">
         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
           Welcome, Student!
@@ -69,70 +52,74 @@ const StudentHomePage = () => {
         </p>
       </div>
 
-      <div className="w-full max-w-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl mb-12">
-        <h2 className="text-3xl font-semibold mb-6 text-white flex items-center justify-center">
-          <BookOpen className="w-8 h-8 mr-3 text-purple-400" />
-          Take a New Quiz
-        </h2>
-        <div className="space-y-6">
-          {/* Subject Name input is optional/informational here, as quizCode is the primary lookup */}
-          <div>
-            <label
-              htmlFor="subjectName"
-              className="block text-gray-300 text-lg font-medium mb-2"
+      {/* Cards container */}
+      <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
+        {/* Take a New Quiz Card */}
+        <div className="w-full md:w-1/2 bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl">
+          <h2 className="text-3xl font-semibold mb-6 text-white flex items-center justify-center">
+            <BookOpen className="w-8 h-8 mr-3 text-purple-400" />
+            Take a New Quiz
+          </h2>
+          <div className="space-y-6">
+            <div>
+              <label
+                htmlFor="subjectName"
+                className="block text-gray-300 text-lg font-medium mb-2"
+              >
+                Subject Name (Optional)
+              </label>
+              <input
+                type="text"
+                id="subjectName"
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="e.g., Ethical Hacking"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="quizCode"
+                className="block text-gray-300 text-lg font-medium mb-2"
+              >
+                Quiz Code <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                id="quizCode"
+                className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="e.g., ABCDEFG"
+                value={quizCode}
+                onChange={(e) => setQuizCode(e.target.value)}
+              />
+            </div>
+            <button
+              onClick={handleTakeTest}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
             >
-              Subject Name (Optional)
-            </label>
-            <input
-              type="text"
-              id="subjectName"
-              className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="e.g., Ethical Hacking"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
+              <Award className="w-5 h-5 mr-2" />
+              Start Quiz
+            </button>
           </div>
-          <div>
-            <label
-              htmlFor="quizCode"
-              className="block text-gray-300 text-lg font-medium mb-2"
-            >
-              Quiz Code <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              id="quizCode"
-              className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="e.g., ABCDEFG"
-              value={quizCode}
-              onChange={(e) => setQuizCode(e.target.value)}
-            />
-          </div>
+        </div>
+
+        {/* Review Your Progress Card */}
+        <div className="w-full md:w-1/2 bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl">
+          <h2 className="text-3xl font-semibold mb-6 text-white flex items-center justify-center">
+            <ListChecks className="w-8 h-8 mr-3 text-pink-400" />
+            Review Your Progress
+          </h2>
+          <p className="text-gray-300 text-lg mb-6 text-center">
+            Access your past quiz attempts and detailed performance reports.
+          </p>
           <button
-            onClick={handleTakeTest}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+            onClick={handleViewPreviousQuizzes}
+            className="w-full bg-gradient-to-r from-teal-500 to-blue-500 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-teal-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
           >
-            <Award className="w-5 h-5 mr-2" />
-            Start Quiz
+            <BarChart3 className="w-5 h-5 mr-2" />
+            View My Quiz Reports
           </button>
         </div>
-      </div>
-
-      <div className="w-full max-w-2xl bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl">
-        <h2 className="text-3xl font-semibold mb-6 text-white flex items-center justify-center">
-          <ListChecks className="w-8 h-8 mr-3 text-pink-400" />
-          Review Your Progress
-        </h2>
-        <p className="text-gray-300 text-lg mb-6 text-center">
-          Access your past quiz attempts and detailed performance reports.
-        </p>
-        <button
-          onClick={handleViewPreviousQuizzes}
-          className="w-full bg-gradient-to-r from-teal-500 to-blue-500 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-teal-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
-        >
-          <BarChart3 className="w-5 h-5 mr-2" />
-          View My Quiz Reports
-        </button>
       </div>
     </div>
   );

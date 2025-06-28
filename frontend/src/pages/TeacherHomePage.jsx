@@ -12,12 +12,10 @@ import {
   CheckCircle,
   X, // Icon for closing modal
   Loader, // Icon for loading state
-  BarChart3,
-  ClipboardList, // Added back for the "View Quizzes" card
+  ClipboardList,
+  BookText, // New icon for subjective questions
+  LayoutDashboard, // A general dashboard icon for the main section
 } from "lucide-react";
-
-// QuizPreviewModal is no longer directly controlled by TeacherHomePage
-// import QuizPreviewModal from "../components/QuizPreviewModal";
 
 const TeacherHomePage = () => {
   const { user, isLoggedIn } = useAuth();
@@ -99,7 +97,6 @@ const TeacherHomePage = () => {
         if (fileInputRef.current) {
           fileInputRef.current.value = ""; // Clear file input
         }
-        // No need to call fetchTeacherQuizzes here, as that logic is now on TeacherQuizzesPage
       } catch (error) {
         console.error(
           "Error generating quiz:",
@@ -125,8 +122,13 @@ const TeacherHomePage = () => {
     };
   };
 
+  // Handler for the new "Generate Subjective Test" button
+  const handleGenerateSubjectiveTest = () => {
+    toast.info("Subjective test generation feature is yet to be implemented!");
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-inter">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white font-inter flex flex-col items-center">
       {/* Background overlay for subtle effect */}
       <div
         className="absolute inset-0 z-0 opacity-20"
@@ -136,7 +138,7 @@ const TeacherHomePage = () => {
         }}
       ></div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 w-full">
         {/* Welcome Section */}
         <section className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -147,73 +149,94 @@ const TeacherHomePage = () => {
           </p>
         </section>
 
-        {/* Content Upload & AI MCQ Generation */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-          <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl col-span-full">
-            <h2 className="text-3xl font-bold text-white mb-6">
-              AI Quiz Generation
+        {/* Main Dashboard Grid */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
+          {/* Left Column: Create New Content (MCQ & Subjective) */}
+          <div className="lg:col-span-2 bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl flex flex-col">
+            <h2 className="text-3xl font-bold text-white mb-6 flex items-center">
+              <LayoutDashboard className="w-8 h-8 mr-3 text-purple-400" />{" "}
+              Create New Content
             </h2>
-            <div className="flex flex-col items-center justify-center p-8 border border-purple-800 bg-purple-900/20 rounded-xl">
-              <Brain className="w-12 h-12 text-purple-400 mb-4" />
-              <p className="text-lg text-gray-300 mb-4 text-center">
-                Automatically generate Multiple Choice Questions (MCQs) from
-                your uploaded PDFs using Gemini AI.
-              </p>
-              <button
-                onClick={() => setShowGenerateQuizModal(true)}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-6 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105"
-              >
-                Generate MCQs
-              </button>
-              <p className="text-gray-500 text-sm mt-4">
-                Once uploaded, click to generate quizzes.
-              </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+              {/* Card for AI MCQ Generation */}
+              <div className="bg-gray-800/50 border border-purple-800 bg-purple-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-purple-500/30 transition-all duration-300">
+                <Brain className="w-14 h-14 text-purple-400 mb-4" />
+                <h3 className="text-2xl font-semibold mb-3">
+                  AI MCQ Generator
+                </h3>
+                <p className="text-lg text-gray-300 mb-6 flex-grow">
+                  Upload a PDF and let Gemini AI create multiple-choice
+                  questions for you.
+                </p>
+                <button
+                  onClick={() => setShowGenerateQuizModal(true)}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-3 rounded-full font-semibold transition-all duration-300 transform hover:scale-105 w-full"
+                >
+                  Generate MCQs
+                </button>
+              </div>
+
+              {/* Card for Subjective Test Generation */}
+              <div className="bg-gray-800/50 border border-blue-800 bg-blue-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-blue-500/30 transition-all duration-300">
+                <BookText className="w-14 h-14 text-blue-400 mb-4" />
+                <h3 className="text-2xl font-semibold mb-3">
+                  Subjective Test Creator
+                </h3>
+                <p className="text-lg text-gray-300 mb-6 flex-grow">
+                  Design tests with open-ended questions and detailed answers
+                  for deeper assessment.
+                </p>
+                <button
+                  onClick={handleGenerateSubjectiveTest}
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-8 py-3 rounded-full font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 w-full"
+                >
+                  Create Subjective Test
+                </button>
+              </div>
             </div>
             {generateSuccess && (
-              <div className="mt-4 flex items-center text-green-400">
+              <div className="mt-6 flex items-center text-green-400 p-3 rounded-lg bg-green-900/30">
                 <CheckCircle className="w-5 h-5 mr-2" />
                 <span>{generateSuccess}</span>
               </div>
             )}
             {generateError && (
-              <div className="mt-4 flex items-center text-red-400">
+              <div className="mt-6 flex items-center text-red-400 p-3 rounded-lg bg-red-900/30">
                 <X className="w-5 h-5 mr-2" />
                 <span>{generateError}</span>
               </div>
             )}
           </div>
-        </section>
 
-        {/* Quick Actions / Navigation Cards */}
-        <section
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
-          style={{ display: "flex", justifyContent: "center" }}
-        >
-          {/* Card to navigate to Your Quizzes Page */}
-          <div className="bg-gray-800/40 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/20 transition-all duration-300">
-            <ClipboardList className="w-12 h-12 text-pink-400 mb-3" />
-            <h3 className="text-2xl font-semibold mb-2">Manage Quizzes</h3>
-            <p className="text-gray-400">
-              View, edit, publish, and delete your created quizzes.
-            </p>
-            <Link
-              to="/teacher/quizzes"
-              className="mt-4 bg-gradient-to-r from-pink-600 to-purple-600 text-white px-5 py-2 rounded-full hover:from-pink-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-            >
-              View All Quizzes
-            </Link>
+          {/* Right Column: Quick Actions / Navigation Cards (Manage Quizzes) */}
+          <div className="lg:col-span-1 bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl flex flex-col">
+            <h2 className="text-3xl font-bold text-white mb-6 flex items-center">
+              <ClipboardList className="w-8 h-8 mr-3 text-pink-400" /> Your
+              Quizzes
+            </h2>
+            {/* Card to navigate to Your Quizzes Page */}
+            <div className="bg-gray-800/50 border border-pink-800 bg-pink-900/20 rounded-xl p-6 flex flex-col items-center text-center shadow-lg hover:shadow-pink-500/30 transition-all duration-300 flex-grow justify-center">
+              <ClipboardList className="w-14 h-14 text-pink-400 mb-4" />
+              <h3 className="text-2xl font-semibold mb-3">
+                Manage Your Quizzes
+              </h3>
+              <p className="text-lg text-gray-300 mb-6">
+                View, edit, publish, and delete your created quizzes.
+              </p>
+              <Link
+                to="/teacher/quizzes"
+                className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-8 py-3 rounded-full hover:from-pink-700 hover:to-purple-700 transition-all duration-300 transform hover:scale-105 w-full"
+              >
+                View All Quizzes
+              </Link>
+            </div>
           </div>
         </section>
 
         {/* CTA Section */}
-        <section
-          className="px-6 py-20 text-center"
-          style={{ display: "flex", justifyContent: "center" }}
-        >
-          <div
-            className="max-w-4xl mx-auto"
-            style={{ display: "flex", justifyContent: "center" }}
-          >
+        <section className="px-6 py-20 text-center flex justify-center">
+          <div className="max-w-4xl mx-auto w-full">
             <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 rounded-3xl p-12 border border-purple-500/30 backdrop-blur-sm">
               <h2 className="text-4xl font-bold text-white mb-4">
                 Empower Your Classroom with EduForce AI!
