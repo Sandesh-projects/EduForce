@@ -18,7 +18,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // CORS configuration - IMPORTANT CHANGES FOR DEPLOYMENT AND DYNAMIC VERCEL URLs
 const allowedOrigins = [
-    // 'http://localhost:5173', // For local frontend development
+    'http://localhost:5173', // For local frontend development
     'https://eduforce-frontend.vercel.app', // Your main Vercel frontend URL
     // Crucially, allow any subdomain of Vercel for dynamic deployments
     /^https:\/\/eduforce-frontend(-\w+)*\.vercel\.app$/ // Regex to match eduforce-frontend.vercel.app AND eduforce-frontend-xxxx.vercel.app
