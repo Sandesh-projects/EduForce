@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { User, Mail, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios"; // Import axios
+import axios from "../axios"; // Import axios
 
 const Register = () => {
   const navigate = useNavigate();
@@ -46,7 +46,7 @@ const Register = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/register", // Adjust URL if your backend is on a different port/domain
+        "/api/auth/register", // Adjust URL if your backend is on a different port/domain
         formData // Now formData includes 'role'
       );
 

@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { User, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useAuth } from "../context/AuthContext"; // Import useAuth hook
+import axios from "../axios";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,10 +28,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password }
-      );
+      const response = await axios.post("api/auth/login", { email, password });
 
       // The backend response should already contain _id, fullName, email, role, and token
       const userData = response.data;
