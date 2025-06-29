@@ -92,7 +92,7 @@ app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log("Backend routes initialized:");
     if (process.env.MONGODB_URI) {
-        console.log("MongoDB Connected:", process.env.MONGODB_URI);
+        console.log("MongoDB Connected:", process.env.MONGODB_URI.split('@')[1].split('/')[0]);
     } else {
         console.log("MongoDB URI not set in environment variables.");
     }
