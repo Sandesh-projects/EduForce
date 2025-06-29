@@ -143,7 +143,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
           ) : (
             // Display quiz details when not editing
             <div>
-              <h2 className="text-4xl font-extrabold text-white mb-2 bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
+              <h2 className="text-4xl font-extrabold text-white mb-2 bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text">
                 {editableQuiz.quizTitle}
               </h2>
               <p className="text-gray-400 mb-1">
@@ -192,7 +192,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
         </div>
 
         {/* Questions Section */}
-        <h3 className="text-3xl font-bold text-white mb-5 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+        <h3 className="text-3xl font-bold text-white mb-5 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text">
           Questions:
         </h3>
         {editableQuiz.questions.map((q, qIndex) => (
