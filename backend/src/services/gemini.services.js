@@ -44,16 +44,39 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         5. Write explanations that enhance learning, not just justify the correct answer
         6. Vary question difficulty to create a balanced assessment experience
 
+        MATHEMATICAL QUESTIONS REQUIREMENT:
+        7. **IMPORTANT**: When the content contains mathematical concepts, formulas, calculations, numerical data, or quantitative information, you MUST include mathematical/computational questions alongside theoretical ones
+        8. Mathematical questions should test:
+           - Problem-solving using formulas or concepts from the text
+           - Calculations and numerical reasoning
+           - Application of mathematical principles
+           - Interpretation of data, graphs, or numerical relationships
+           - Conversion between units or formats
+        9. Aim for a balanced mix: if content supports it, include at least 30-40% mathematical questions
+        10. For mathematical questions, ensure distractors are mathematically plausible but represent common calculation errors or misconceptions
+
         QUESTION WRITING BEST PRACTICES:
-        - Start questions directly with "What," "How," "Why," "Which," etc.
+        - Start questions directly with "What," "How," "Why," "Which," "Calculate," "If," etc.
         - Focus on understanding concepts, applications, and relationships rather than memorization
         - Make each question standalone - don't reference "the text" or "the passage"
         - Use clear, concise language appropriate for the subject level
         - Create realistic distractors based on common misconceptions or related concepts
+        - For mathematical questions, show the problem clearly and make calculations straightforward
         - Ensure only one option is unambiguously correct
+
+        MATHEMATICAL QUESTION EXAMPLES:
+        ✅ "If a car travels at 60 km/h for 2.5 hours, what distance does it cover?"
+        ✅ "Calculate the area of a rectangle with length 8 cm and width 5 cm."
+        ✅ "What is the compound interest on $1000 at 5% per annum for 3 years?"
+        ✅ "If the voltage is 12V and current is 3A, what is the power consumed?"
 
         Generate exactly ${validatedNumQuestions} distinct multiple-choice questions based on the content provided below.
         Each question must have exactly 4 options with only one correct answer.
+
+        QUESTION TYPE DISTRIBUTION:
+        - If content has mathematical/quantitative elements: Include 30-40% mathematical questions, 60-70% theoretical
+        - If content is purely theoretical: Focus on conceptual understanding and application
+        - Always prioritize variety in question types and difficulty levels
 
         IMPORTANT: Keep your response concise to avoid truncation. Use shorter explanations (max 2 sentences each).
 
@@ -74,15 +97,16 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
               "correctAnswerId": "q1_optionB",
               "explanation": "Brief explanation (max 2 sentences).",
               "difficulty": "Easy|Medium|Hard",
-              "topic": "Specific concept or topic area"
+              "topic": "Specific concept or topic area",
+              "questionType": "theoretical|mathematical|applied"
             }
           ]
         }
 
         DIFFICULTY DISTRIBUTION GUIDE:
-        - Easy (30%): Basic definitions, simple recall, fundamental concepts
-        - Medium (50%): Application of concepts, analysis, connecting ideas
-        - Hard (20%): Complex analysis, synthesis, critical thinking, edge cases
+        - Easy (30%): Basic definitions, simple recall, fundamental concepts, basic calculations
+        - Medium (50%): Application of concepts, analysis, connecting ideas, multi-step calculations
+        - Hard (20%): Complex analysis, synthesis, critical thinking, complex problem-solving
 
         EXAMPLE TRANSFORMATIONS:
         ❌ Poor: "According to the text, what is the primary purpose of a DBMS?"
@@ -94,13 +118,19 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         ❌ Poor: "The text states that algorithms are important because..."
         ✅ Good: "Why are algorithms fundamental to computer science?"
 
+        ✅ Mathematical: "If a database has 1000 records and each query processes 100 records per second, how long will it take to process all records?"
+
         Now generate ${validatedNumQuestions} high-quality MCQs based on this content:
 
         ---
         ${textContent}
         ---
 
-        Remember: Output ONLY valid JSON with no additional text, comments, or explanations outside the JSON structure. Keep all content concise to ensure complete response.
+        Remember: 
+        - Output ONLY valid JSON with no additional text, comments, or explanations outside the JSON structure
+        - Keep all content concise to ensure complete response
+        - Include mathematical questions when the content supports them
+        - Balance theoretical understanding with practical problem-solving
     `;
 
     try {
@@ -261,7 +291,8 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
             throw new Error("Invalid MCQ data structure: missing or invalid questions array");
         }
 
-        // Quality validation
+        // Quality validation and mathematical question tracking
+        let mathematicalQuestions = 0;
         for (let i = 0; i < mcqsData.questions.length; i++) {
             const question = mcqsData.questions[i];
             
@@ -282,6 +313,11 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 console.warn(`Question ${i + 1} contains text reference phrase. Consider regenerating for better quality.`);
             }
             
+            // Track question types
+            if (question.questionType === 'mathematical') {
+                mathematicalQuestions++;
+            }
+            
             // Validate structure
             if (!question.options || question.options.length !== 4) {
                 throw new Error(`Question ${i + 1} does not have exactly 4 options`);
@@ -291,6 +327,9 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 throw new Error(`Question ${i + 1} is missing correctAnswerId`);
             }
         }
+
+        // Log question type distribution
+        console.log(`Generated ${mcqsData.questions.length} questions: ${mathematicalQuestions} mathematical, ${mcqsData.questions.length - mathematicalQuestions} theoretical/applied`);
 
         if (mcqsData.questions.length !== validatedNumQuestions) {
             console.warn(`Gemini generated ${mcqsData.questions.length} questions, but ${validatedNumQuestions} were requested.`);
