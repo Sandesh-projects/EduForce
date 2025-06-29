@@ -21,12 +21,6 @@ const LandingPage = () => {
 
   const teacherFeatures = [
     {
-      icon: <Video className="w-6 h-6" />,
-      title: "Manage Video Playlists",
-      description:
-        "Create and organize your video lecture collections with ease",
-    },
-    {
       icon: <FileText className="w-6 h-6" />,
       title: "Upload & Parse PDFs",
       description: "Automatically extract content from your lecture notes",
@@ -48,11 +42,6 @@ const LandingPage = () => {
       description:
         "Monitor student performance with detailed AI-driven insights",
     },
-    {
-      icon: <Eye className="w-6 h-6" />,
-      title: "Real-time Monitoring",
-      description: "Track student progress and quiz results as they happen",
-    },
   ];
 
   const studentFeatures = [
@@ -61,12 +50,6 @@ const LandingPage = () => {
       title: "Personalized Dashboard",
       description:
         "Access enrolled videos, notes, and available quizzes in one place",
-    },
-    {
-      icon: <Play className="w-6 h-6" />,
-      title: "Interactive Video Learning",
-      description:
-        "Watch lectures and access downloadable PDF notes seamlessly",
     },
     {
       icon: <Brain className="w-6 h-6" />,
@@ -89,6 +72,45 @@ const LandingPage = () => {
       description: "Understand your strengths and areas for improvement",
     },
   ];
+
+  const handleGetStarted = () => {
+    window.location.href = "/login";
+  };
+
+  const handleWatchDemo = () => {
+    // Create a custom toast-like notification
+    const notification = document.createElement("div");
+    notification.className =
+      "fixed top-4 right-4 bg-gray-800 border border-purple-500/30 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm";
+    notification.innerHTML = `
+      <div class="flex items-center">
+        <div class="text-purple-400 mr-3">🎬</div>
+        <div>
+          <div class="font-semibold">Demo Coming Soon!</div>
+          <div class="text-sm text-gray-300">Stay tuned for exciting features showcase.</div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Animate in
+    notification.style.transform = "translateX(100%)";
+    notification.style.transition = "transform 0.3s ease-out";
+    setTimeout(() => {
+      notification.style.transform = "translateX(0)";
+    }, 10);
+
+    // Remove after 4 seconds
+    setTimeout(() => {
+      notification.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -116,30 +138,20 @@ const LandingPage = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center">
+            <button
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
+            >
               Get Started for Free
               <ArrowRight className="w-5 h-5 ml-2" />
             </button>
-            <button className="border border-gray-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300 flex items-center justify-center">
+            <button
+              onClick={handleWatchDemo}
+              className="border border-gray-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300 flex items-center justify-center"
+            >
               Watch Demo
               <Play className="w-5 h-5 ml-2" />
             </button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">10k+</div>
-              <div className="text-gray-400">Active Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">50k+</div>
-              <div className="text-gray-400">Quizzes Generated</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">95%</div>
-              <div className="text-gray-400">Accuracy Rate</div>
-            </div>
           </div>
         </div>
       </section>
@@ -269,12 +281,12 @@ const LandingPage = () => {
               Join thousands of educators already using AI to enhance their
               teaching and student outcomes.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105">
-                Start Free Trial
-              </button>
-              <button className="border border-gray-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/10 transition-all duration-300">
-                Schedule Demo
+            <div className="flex justify-center">
+              <button
+                onClick={handleGetStarted}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105"
+              >
+                Get Started
               </button>
             </div>
           </div>
@@ -290,7 +302,9 @@ const LandingPage = () => {
             </div>
             <span className="text-xl font-bold text-white">EduForce</span>
           </div>
-          <p className="text-gray-400">© 2025 EduForce. All rights reserved.</p>
+          <p className="text-gray-400">
+            © 2025 EduForce. All rights reserved. Sandeshkumar Yadav
+          </p>
         </div>
       </footer>
     </div>
