@@ -1,9 +1,7 @@
-// src/pages/Register.jsx
-
 import React, { useState } from "react";
 import { User, Mail, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import axios from "../axios"; // Import axios
+import axios from "../axios"; // Axios for API calls
 
 const Register = () => {
   const navigate = useNavigate();
@@ -11,12 +9,13 @@ const Register = () => {
     fullName: "",
     email: "",
     password: "",
-    role: "student", // Added new state for role with a default value
+    role: "student", // Default role
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(""); // State for displaying API errors
+  const [errorMessage, setErrorMessage] = useState(""); // API error message
 
+  // Handles changes to form input fields
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -25,13 +24,12 @@ const Register = () => {
     }));
   };
 
+  // Handles user registration form submission
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMessage(""); // Clear previous errors
 
-    // Basic frontend validation
-    // Now also checking for role selection if you decide to make it mandatory,
-    // though with default it's always set.
+    // Basic form validation
     if (
       !formData.fullName ||
       !formData.email ||
@@ -42,25 +40,17 @@ const Register = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(true); // Start loading
 
     try {
-      const response = await axios.post(
-        "/api/auth/register", // Adjust URL if your backend is on a different port/domain
-        formData // Now formData includes 'role'
-      );
-
-      // Registration is successful
-      alert("Registration successful! You can now log in.");
-      setFormData({ fullName: "", email: "", password: "", role: "student" }); // Reset form including role
-      navigate("/login"); // Redirect to login page
+      const response = await axios.post("/api/auth/register", formData);
+      alert("Registration successful! You can now log in."); // Success message
+      setFormData({ fullName: "", email: "", password: "", role: "student" }); // Reset form
+      navigate("/login"); // Redirect to login
     } catch (error) {
       console.error("Error during registration:", error);
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
+      // Display specific error message from backend or generic error
+      if (error.response?.data?.message) {
         setErrorMessage(error.response.data.message);
       } else if (error.request) {
         setErrorMessage("No response from server. Please try again later.");
@@ -68,20 +58,20 @@ const Register = () => {
         setErrorMessage("An unexpected error occurred. Please try again.");
       }
     } finally {
-      setIsLoading(false); // Stop loading regardless of success or failure
+      setIsLoading(false); // Stop loading
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-6 py-8">
-      {/* Background Effects */}
+      {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Header */}
+        {/* Header section */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
@@ -95,9 +85,10 @@ const Register = () => {
           </p>
         </div>
 
-        {/* Register Form */}
+        {/* Registration Form */}
         <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleRegister} className="space-y-5">
+            {/* Error message display */}
             {errorMessage && (
               <div className="bg-red-500 bg-opacity-20 text-red-300 border border-red-400 rounded-md p-3 text-sm text-center">
                 {errorMessage}
@@ -109,28 +100,42 @@ const Register = () => {
               <label className="text-sm font-medium text-gray-300">
                 Register as
               </label>
-              <div className="flex space-x-4">
-                <label className="inline-flex items-center text-gray-300 cursor-pointer">
+              <div className="flex space-x-4 mt-1">
+                <label
+                  className={`flex items-center px-4 py-2 rounded-xl border transition-all duration-200 cursor-pointer
+                    ${
+                      formData.role === "student"
+                        ? "bg-purple-600/20 border-purple-500 text-purple-200 shadow-md"
+                        : "bg-gray-800/40 border-gray-600 text-gray-300 hover:border-purple-400"
+                    }`}
+                >
                   <input
                     type="radio"
                     name="role"
                     value="student"
                     checked={formData.role === "student"}
                     onChange={handleInputChange}
-                    className="form-radio h-4 w-4 text-purple-600 bg-gray-800/50 border-gray-600 focus:ring-purple-500"
+                    className="form-radio h-4 w-4 text-purple-600 bg-gray-800/50 border-gray-600 focus:ring-purple-500 accent-purple-600"
                   />
-                  <span className="ml-2">Student</span>
+                  <span className="ml-2 font-semibold">Student</span>
                 </label>
-                <label className="inline-flex items-center text-gray-300 cursor-pointer">
+                <label
+                  className={`flex items-center px-4 py-2 rounded-xl border transition-all duration-200 cursor-pointer
+                    ${
+                      formData.role === "teacher"
+                        ? "bg-pink-600/20 border-pink-500 text-pink-200 shadow-md"
+                        : "bg-gray-800/40 border-gray-600 text-gray-300 hover:border-pink-400"
+                    }`}
+                >
                   <input
                     type="radio"
                     name="role"
                     value="teacher"
                     checked={formData.role === "teacher"}
                     onChange={handleInputChange}
-                    className="form-radio h-4 w-4 text-pink-600 bg-gray-800/50 border-gray-600 focus:ring-pink-500"
+                    className="form-radio h-4 w-4 text-pink-600 bg-gray-800/50 border-gray-600 focus:ring-pink-500 accent-pink-600"
                   />
-                  <span className="ml-2">Teacher</span>
+                  <span className="ml-2 font-semibold">Teacher</span>
                 </label>
               </div>
             </div>
@@ -225,9 +230,7 @@ const Register = () => {
             <p className="text-gray-400">
               Already have an account?{" "}
               <button
-                onClick={() => {
-                  navigate("/login");
-                }}
+                onClick={() => navigate("/login")}
                 className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
               >
                 Sign in here

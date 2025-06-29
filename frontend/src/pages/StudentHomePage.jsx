@@ -6,27 +6,35 @@ import axios from "../axios";
 import { BookOpen, Award, ListChecks, BarChart3 } from "lucide-react";
 
 const StudentHomePage = () => {
+  // State for subject name (optional) and quiz code
   const [subject, setSubject] = useState("");
   const [quizCode, setQuizCode] = useState("");
+  // Hook for navigation
   const navigate = useNavigate();
 
+  // Handler for taking a new quiz
   const handleTakeTest = async () => {
+    // Validate if quiz code is entered
     if (!quizCode) {
       toast.error("Please enter the Quiz Code.");
       return;
     }
     try {
+      // Check if the student has already attempted this quiz
       const { data } = await axios.get(
         `/api/student/quizzes/check-attempt/${quizCode.toUpperCase()}`
       );
+      // Prevent re-attempt if already completed
       if (data.hasAttempted) {
         toast.warn(
           "You have already completed this quiz. You cannot re-attempt it."
         );
         return;
       }
+      // Navigate to the quiz taking page
       navigate(`/student/take-quiz/${quizCode.toUpperCase()}`);
     } catch (error) {
+      // Log and display error if API call fails
       console.error("Error checking quiz attempt status:", error);
       toast.error(
         error.response?.data?.message ||
@@ -35,13 +43,16 @@ const StudentHomePage = () => {
     }
   };
 
+  // Handler for viewing previous quizzes
   const handleViewPreviousQuizzes = () => {
+    // Navigate to the quiz inventory page
     navigate("/student/quizzes/inventory");
   };
 
   return (
+    // Main container with gradient background and styling
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col items-center p-8">
-      {/* Header */}
+      {/* Header section */}
       <div className="max-w-4xl w-full text-center py-12">
         <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
           Welcome, Student!
@@ -52,7 +63,7 @@ const StudentHomePage = () => {
         </p>
       </div>
 
-      {/* Cards container */}
+      {/* Cards container for quiz actions */}
       <div className="w-full max-w-5xl flex flex-col md:flex-row gap-8">
         {/* Take a New Quiz Card */}
         <div className="w-full md:w-1/2 bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-xl">
@@ -61,6 +72,7 @@ const StudentHomePage = () => {
             Take a New Quiz
           </h2>
           <div className="space-y-6">
+            {/* Subject Name Input */}
             <div>
               <label
                 htmlFor="subjectName"
@@ -77,6 +89,7 @@ const StudentHomePage = () => {
                 onChange={(e) => setSubject(e.target.value)}
               />
             </div>
+            {/* Quiz Code Input */}
             <div>
               <label
                 htmlFor="quizCode"
@@ -93,6 +106,7 @@ const StudentHomePage = () => {
                 onChange={(e) => setQuizCode(e.target.value)}
               />
             </div>
+            {/* Start Quiz Button */}
             <button
               onClick={handleTakeTest}
               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
@@ -112,6 +126,7 @@ const StudentHomePage = () => {
           <p className="text-gray-300 text-lg mb-6 text-center">
             Access your past quiz attempts and detailed performance reports.
           </p>
+          {/* View Quiz Reports Button */}
           <button
             onClick={handleViewPreviousQuizzes}
             className="w-full bg-gradient-to-r from-teal-500 to-blue-500 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-teal-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center"

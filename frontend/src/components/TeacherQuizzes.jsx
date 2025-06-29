@@ -1,24 +1,23 @@
-// src/components/TeacherQuizzes.jsx
 import React, {
   useEffect,
   useState,
   useImperativeHandle,
   forwardRef,
 } from "react";
-import axios from "../axios"; // Your configured axios instance
-import { useAuth } from "../context/AuthContext";
-import { toast } from "react-toastify";
-import { ClipboardList, Edit, Trash2, Loader, PlusCircle } from "lucide-react";
-import QuizPreviewModal from "./QuizPreviewModal"; // Import the modal
+import axios from "../axios"; // Axios for API calls
+import { useAuth } from "../context/AuthContext"; // Auth context for user info
+import { toast } from "react-toastify"; // For notifications
+import { ClipboardList, Edit, Trash2, Loader, PlusCircle } from "lucide-react"; // Icons
+import QuizPreviewModal from "./QuizPreviewModal"; // Modal for quiz preview/edit
 
 const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
   const { user, isLoggedIn } = useAuth();
   const [teacherQuizzes, setTeacherQuizzes] = useState([]);
   const [quizzesLoading, setQuizzesLoading] = useState(true);
   const [quizzesError, setQuizzesError] = useState("");
-  const [selectedQuiz, setSelectedQuiz] = useState(null); // State to hold quiz for modal preview/edit
+  const [selectedQuiz, setSelectedQuiz] = useState(null); // Quiz for modal
 
-  // Function to fetch quizzes for the logged-in teacher
+  // Fetches quizzes for the logged-in teacher
   const fetchTeacherQuizzes = async () => {
     if (!isLoggedIn || !user) {
       setQuizzesLoading(false);
@@ -29,7 +28,6 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
     try {
       const response = await axios.get("/api/quizzes/teacher");
       setTeacherQuizzes(response.data);
-      // Removed toast.success("Quizzes loaded successfully!"); to avoid repeated toasts on initial load
     } catch (error) {
       console.error("Error fetching teacher quizzes:", error);
       setQuizzesError("Failed to load your quizzes. Please try again.");
@@ -39,26 +37,28 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
     }
   };
 
-  // Expose fetchTeacherQuizzes via ref
+  // Expose fetch function to parent component via ref
   useImperativeHandle(ref, () => ({
     fetchQuizzes: fetchTeacherQuizzes,
   }));
 
+  // Fetch quizzes on component mount or auth status change
   useEffect(() => {
     fetchTeacherQuizzes();
   }, [isLoggedIn, user]);
 
+  // Sets selected quiz to open preview modal
   const handleEditQuiz = (quiz) => {
     setSelectedQuiz(quiz);
   };
 
+  // Handles quiz publishing (placeholder for now)
   const handlePublishQuiz = async (quiz) => {
     toast.info(`Publishing quiz: ${quiz.quizTitle} - ${quiz.quizCode}`);
-    // Implement actual backend logic for publishing here if needed
-    // After successful publish:
-    // fetchTeacherQuizzes();
+    // Add actual publish logic here
   };
 
+  // Handles quiz deletion
   const handleDeleteQuiz = async (quizId) => {
     if (window.confirm("Are you sure you want to delete this quiz?")) {
       try {
@@ -74,15 +74,17 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
     }
   };
 
+  // Closes preview modal and refreshes quiz list
   const handleClosePreviewModal = () => {
     setSelectedQuiz(null);
-    fetchTeacherQuizzes(); // Re-fetch quizzes in case of edits within the modal
+    fetchTeacherQuizzes(); // Refresh list to reflect potential edits
   };
 
   return (
     <section className="mb-16">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-white">Your Quizzes</h2>
+        {/* Button to create new quiz */}
         <button
           onClick={onGenerateQuizClick}
           className="bg-pink-600 hover:bg-pink-700 text-white px-6 py-2 rounded-full flex items-center space-x-2 transition-colors"
@@ -92,6 +94,7 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
         </button>
       </div>
       <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-6 shadow-xl">
+        {/* Loading, error, or quizzes display */}
         {quizzesLoading ? (
           <div className="flex justify-center items-center py-8 text-gray-400">
             <Loader className="w-6 h-6 animate-spin mr-3" />
@@ -126,6 +129,7 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
                   </div>
                 </div>
                 <div className="flex space-x-3">
+                  {/* Quiz action buttons */}
                   <button
                     onClick={() => handleEditQuiz(quiz)}
                     className="text-purple-400 hover:text-purple-300 text-sm font-medium flex items-center space-x-1"
@@ -155,6 +159,7 @@ const TeacherQuizzes = forwardRef(({ onGenerateQuizClick }, ref) => {
         )}
       </div>
 
+      {/* Quiz Preview/Edit Modal */}
       {selectedQuiz && (
         <QuizPreviewModal
           quiz={selectedQuiz}

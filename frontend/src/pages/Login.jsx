@@ -1,14 +1,12 @@
-// src/pages/Login.jsx
-
 import React, { useState } from "react";
 import { User, Lock, Brain, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext"; // Import useAuth hook
-import axios from "../axios";
+import { useAuth } from "../context/AuthContext"; // Auth context for login
+import axios from "../axios"; // Axios for API calls
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // Get the login function from AuthContext
+  const { login } = useAuth(); // Get login function
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,53 +27,44 @@ const Login = () => {
 
     try {
       const response = await axios.post("api/auth/login", { email, password });
+      const userData = response.data; // User data from backend
 
-      // The backend response should already contain _id, fullName, email, role, and token
-      const userData = response.data;
+      login(userData); // Update auth context
 
-      // Call the login function from AuthContext to update global state and localStorage
-      login(userData); // This will update isLoggedIn and user state in AuthContext
+      alert(userData.message || "Login successful!"); // Show success
 
-      alert(userData.message || "Login successful!");
-
-      // Redirect immediately after successful login and context update
+      // Redirect based on user role
       if (userData.role === "student") {
         navigate("/student-home");
       } else if (userData.role === "teacher") {
         navigate("/teacher-home");
       } else {
-        // Fallback for unexpected or undefined roles
-        navigate("/");
+        navigate("/"); // Fallback
       }
     } catch (error) {
       console.error("Login error:", error);
       if (error.response) {
-        setErrorMessage(
-          error.response.data.message ||
-            "Invalid credentials. Please try again."
-        );
+        setErrorMessage(error.response.data.message || "Invalid credentials.");
       } else if (error.request) {
-        setErrorMessage(
-          "No response from server. Please check your internet connection or server status."
-        );
+        setErrorMessage("No response from server.");
       } else {
-        setErrorMessage("An unexpected error occurred. Please try again.");
+        setErrorMessage("An unexpected error occurred.");
       }
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Stop loading
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-6 py-8">
-      {/* ... (rest of your Login component JSX) ... */}
+      {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Header */}
+        {/* Header section */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
@@ -92,6 +81,7 @@ const Login = () => {
         {/* Login Form */}
         <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
           <form onSubmit={handleLogin} className="space-y-6">
+            {/* Error message display */}
             {errorMessage && (
               <div className="bg-red-500 bg-opacity-20 text-red-300 border border-red-400 rounded-md p-3 text-sm text-center">
                 {errorMessage}
@@ -165,9 +155,7 @@ const Login = () => {
             <p className="text-gray-400">
               Don't have an account?{" "}
               <button
-                onClick={() => {
-                  navigate("/register");
-                }}
+                onClick={() => navigate("/register")}
                 className="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
               >
                 Create one here

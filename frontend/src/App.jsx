@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import {
   Route,
   Routes,
@@ -10,21 +9,19 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Suspense, lazy } from "react";
 
-// Import components that are always needed
+// Core components and context
 import Header from "./components/Header";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Loader } from "lucide-react"; // Loading spinner icon
 
-// Import Loader icon from lucide-react for the custom spinner
-import { Loader } from "lucide-react";
-
-// Lazy load pages for better performance
+// Lazy loaded pages for efficiency
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 
-// Student pages
+// Student-specific pages
 const StudentHomePage = lazy(() => import("./pages/StudentHomePage"));
 const StudentQuizInventoryPage = lazy(() =>
   import("./pages/StudentQuizInventoryPage")
@@ -34,7 +31,7 @@ const StudentQuizAttemptReportPage = lazy(() =>
   import("./pages/StudentQuizAttemptReportPage")
 );
 
-// Teacher pages
+// Teacher-specific pages
 const TeacherHomePage = lazy(() => import("./pages/TeacherHomePage"));
 const TeacherQuizzesPage = lazy(() => import("./pages/TeacherQuizzesPage"));
 const QuizReportPage = lazy(() => import("./pages/QuizReportPage"));
@@ -42,52 +39,48 @@ const TeacherQuizAttemptsPage = lazy(() =>
   import("./pages/TeacherQuizAttemptsPage")
 );
 
-// Route constants for better maintainability
+// Define application routes
 const ROUTES = {
   HOME: "/",
   LOGIN: "/login",
   REGISTER: "/register",
   PROFILE: "/profile",
 
-  // Student routes
   STUDENT: {
     HOME: "/student/home",
     QUIZ_INVENTORY: "/student/quizzes/inventory",
-    TAKE_QUIZ: "/student/take-quiz", // Changed to base path for easier check
+    TAKE_QUIZ: "/student/take-quiz",
     QUIZ_REPORT: "/student/quizzes/report/:attemptId",
   },
 
-  // Teacher routes
   TEACHER: {
     HOME: "/teacher/home",
     QUIZZES: "/teacher/quizzes",
-    QUIZ_ATTEMPTS: "/teacher/quizzes/:quizId/report", // Used for the list of attempts for a specific quiz
-    ATTEMPT_REPORT: "/teacher/attempts/:attemptId", // Used for individual attempt report (QuizReportPage)
+    QUIZ_ATTEMPTS: "/teacher/quizzes/:quizId/report",
+    ATTEMPT_REPORT: "/teacher/attempts/:attemptId",
   },
 };
 
-// User role constants
+// Define user roles
 const USER_ROLES = {
   STUDENT: "student",
   TEACHER: "teacher",
 };
 
-// Helper function to determine redirect path based on user role
+// Determines redirect path based on user role
 const getRedirectPath = (user) => {
   if (!user) return ROUTES.HOME;
-
   switch (user.role) {
     case USER_ROLES.STUDENT:
       return ROUTES.STUDENT.HOME;
     case USER_ROLES.TEACHER:
       return ROUTES.TEACHER.HOME;
     default:
-      console.warn(`Unknown user role: ${user.role}`);
       return ROUTES.HOME;
   }
 };
 
-// Custom Loading Spinner Component using Lucide React
+// Custom loading spinner component
 const LoadingSpinner = () => (
   <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col items-center justify-center p-8 text-white">
     <Loader className="w-16 h-16 animate-spin text-purple-400 mb-6" />
@@ -96,34 +89,25 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Component to handle root route redirection (or any route where authenticated users shouldn't be)
+// Component to redirect authenticated users from public routes
 const RedirectIfAuthenticated = ({ children }) => {
   const { isLoggedIn, user, loading } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
-  // If loading, just show spinner
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
-  // If already logged in, redirect to appropriate home page
+  if (loading) return <LoadingSpinner />;
   if (isLoggedIn && user) {
     const redirectPath = getRedirectPath(user);
-    // Use replace to prevent going back to login/register via browser back button
     return <Navigate to={redirectPath} replace state={{ from: location }} />;
   }
-
-  // If not logged in, render the children (e.g., Login or Register component)
   return children;
 };
 
-// Loading component wrapper
+// Wrapper for lazy loaded pages with a loading fallback
 const PageLoader = ({ children }) => (
   <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>
 );
 
-// Enhanced PrivateRoute wrapper for better error handling
+// Enhanced PrivateRoute for role-based access control
 const ProtectedRoute = ({
   children,
   requiredRole,
@@ -132,14 +116,10 @@ const ProtectedRoute = ({
   const { isLoggedIn, user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
+  if (loading) return <LoadingSpinner />;
   if (!isLoggedIn) {
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
-
   return <PrivateRoute requiredRole={requiredRole}>{children}</PrivateRoute>;
 };
 
@@ -155,24 +135,20 @@ function App() {
 // App content with routing logic
 const AppContent = () => {
   const { loading } = useAuth();
-  const location = useLocation(); // Get current location
+  const location = useLocation();
 
-  // Determine if the header should be hidden
-  // The StudentTakeQuizPage path is `/student/take-quiz/:quizCode`
-  // We check if the pathname starts with the base of this route.
+  // Hide header on quiz-taking page
   const hideHeader = location.pathname.startsWith(ROUTES.STUDENT.TAKE_QUIZ);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="app">
-      {!hideHeader && <Header />} {/* Conditionally render Header */}
+      {!hideHeader && <Header />}
       <main className="main-content">
         <PageLoader>
           <Routes>
-            {/* Public Routes - Now use RedirectIfAuthenticated */}
+            {/* Public Routes */}
             <Route
               path={ROUTES.LOGIN}
               element={
@@ -190,7 +166,7 @@ const AppContent = () => {
               }
             />
 
-            {/* Root Route with Smart Redirection (still relevant for initial app load) */}
+            {/* Root Route with Smart Redirection */}
             <Route path={ROUTES.HOME} element={<RootRedirect />} />
 
             {/* Shared Protected Routes */}
@@ -232,16 +208,13 @@ const AppContent = () => {
   );
 };
 
-// Component to handle root route redirection (renamed from RootRedirect for clarity)
+// Component for root route redirection
 const RootRedirect = () => {
   const { isLoggedIn, user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) {
-    return <LoadingSpinner />; // Show loading while auth state is determined
-  }
+  if (loading) return <LoadingSpinner />;
 
-  // Preserve the intended destination in state for post-login redirect
   const from = location.state?.from?.pathname || getRedirectPath(user);
 
   if (isLoggedIn && user) {
@@ -251,7 +224,7 @@ const RootRedirect = () => {
   return <LandingPage />;
 };
 
-// Student routes component
+// Student routes definitions
 const StudentRoutes = () => (
   <Routes>
     <Route
@@ -271,7 +244,7 @@ const StudentRoutes = () => (
       }
     />
     <Route
-      path="take-quiz/:quizCode" // Full path including parameter
+      path="take-quiz/:quizCode"
       element={
         <ProtectedRoute requiredRole={USER_ROLES.STUDENT}>
           <StudentTakeQuizPage />
@@ -286,12 +259,11 @@ const StudentRoutes = () => (
         </ProtectedRoute>
       }
     />
-    {/* Student 404 - redirect to student home */}
     <Route path="*" element={<Navigate to={ROUTES.STUDENT.HOME} replace />} />
   </Routes>
 );
 
-// Teacher routes component
+// Teacher routes definitions
 const TeacherRoutes = () => (
   <Routes>
     <Route
@@ -311,7 +283,7 @@ const TeacherRoutes = () => (
       }
     />
     <Route
-      path="quizzes/:quizId/report" // This route is for TeacherQuizAttemptsPage (list of attempts for a quiz)
+      path="quizzes/:quizId/report"
       element={
         <ProtectedRoute requiredRole={USER_ROLES.TEACHER}>
           <TeacherQuizAttemptsPage />
@@ -319,14 +291,13 @@ const TeacherRoutes = () => (
       }
     />
     <Route
-      path="attempts/:attemptId" // This route is for individual QuizReportPage (for teacher to view student's report)
+      path="attempts/:attemptId"
       element={
         <ProtectedRoute requiredRole={USER_ROLES.TEACHER}>
           <QuizReportPage />
         </ProtectedRoute>
       }
     />
-    {/* Teacher 404 - redirect to teacher home */}
     <Route path="*" element={<Navigate to={ROUTES.TEACHER.HOME} replace />} />
   </Routes>
 );

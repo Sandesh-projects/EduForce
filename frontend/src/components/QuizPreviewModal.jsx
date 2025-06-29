@@ -1,23 +1,33 @@
-// frontend/src/components/QuizPreviewModal.jsx
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaEdit, FaSave, FaBan } from "react-icons/fa"; // Import icons for edit, save, cancel
+import { FaTimes, FaEdit, FaSave, FaBan } from "react-icons/fa"; // Icons for actions
 
+/**
+ * QuizPreviewModal component displays a quiz for preview and allows editing.
+ *
+ * @param {object} props - Component props.
+ * @param {object} props.quiz - The quiz object to display and edit.
+ * @param {function} props.onClose - Function to call when the modal is closed.
+ * @param {function} props.onSave - Function to call when changes are saved.
+ */
 const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
-  // Use local state to manage the quiz data being edited
+  // State for the quiz data that can be edited within the modal
   const [editableQuiz, setEditableQuiz] = useState(null);
-  const [editingQuestionId, setEditingQuestionId] = useState(null); // Track which question is being edited
-  const [isEditingQuizDetails, setIsEditingQuizDetails] = useState(false); // Track if quiz title/subject/topic are being edited
+  // Tracks which question is currently in editing mode
+  const [editingQuestionId, setEditingQuestionId] = useState(null);
+  // Tracks if quiz title/subject/topic are being edited
+  const [isEditingQuizDetails, setIsEditingQuizDetails] = useState(false);
 
+  // Initialize `editableQuiz` when the `quiz` prop changes
   useEffect(() => {
-    // Initialize editableQuiz when the 'quiz' prop changes
     if (quiz) {
       setEditableQuiz({ ...quiz });
     }
   }, [quiz]);
 
-  if (!editableQuiz) return null; // Use editableQuiz here
+  // Don't render if quiz data isn't loaded yet
+  if (!editableQuiz) return null;
 
-  // Handlers for quiz details (title, subject, topic)
+  // Handles changes to quiz details (title, subject, topic)
   const handleDetailChange = (e) => {
     const { name, value } = e.target;
     setEditableQuiz((prev) => ({
@@ -26,7 +36,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
-  // Handlers for question text changes
+  // Handles changes to a question's text
   const handleQuestionTextChange = (questionId, newText) => {
     setEditableQuiz((prev) => ({
       ...prev,
@@ -36,7 +46,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
-  // Handlers for option text changes
+  // Handles changes to an option's text for a specific question
   const handleOptionTextChange = (questionId, optionId, newText) => {
     setEditableQuiz((prev) => ({
       ...prev,
@@ -53,7 +63,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
-  // Handler for changing the correct answer
+  // Handles changing the correct answer for a question
   const handleCorrectAnswerChange = (questionId, newCorrectAnswerId) => {
     setEditableQuiz((prev) => ({
       ...prev,
@@ -63,7 +73,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
-  // Handlers for explanation, difficulty, topic
+  // Handles changes to other question fields like explanation, difficulty, topic
   const handleQuestionFieldChange = (questionId, fieldName, value) => {
     setEditableQuiz((prev) => ({
       ...prev,
@@ -73,19 +83,20 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
+  // Saves all current edits and calls the `onSave` prop
   const handleSaveQuiz = () => {
     if (onSave) {
-      onSave(editableQuiz); // Pass the entire edited quiz object to the parent
+      onSave(editableQuiz); // Pass the edited quiz object to the parent
     }
-    setEditingQuestionId(null); // Exit editing mode for any question
-    setIsEditingQuizDetails(false); // Exit editing mode for quiz details
+    setEditingQuestionId(null); // Exit question editing mode
+    setIsEditingQuizDetails(false); // Exit quiz details editing mode
   };
 
+  // Cancels all edits and reverts to the original quiz data
   const handleCancelEdit = () => {
-    // Revert to the original quiz data
-    setEditableQuiz({ ...quiz });
-    setEditingQuestionId(null); // Exit editing mode for any question
-    setIsEditingQuizDetails(false); // Exit editing mode for quiz details
+    setEditableQuiz({ ...quiz }); // Revert to original quiz prop
+    setEditingQuestionId(null); // Exit question editing mode
+    setIsEditingQuizDetails(false); // Exit quiz details editing mode
   };
 
   return (
@@ -100,9 +111,10 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
           <FaTimes size={24} />
         </button>
 
-        {/* Quiz Details - Title, Code, Subject, Topic */}
+        {/* Quiz Details (Title, Code, Subject, Topic) with Edit/Save/Cancel */}
         <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
           {isEditingQuizDetails ? (
+            // Input fields when editing quiz details
             <div className="w-full space-y-3">
               <input
                 type="text"
@@ -129,6 +141,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
               />
             </div>
           ) : (
+            // Display quiz details when not editing
             <div>
               <h2 className="text-4xl font-extrabold text-white mb-2 bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text text-transparent">
                 {editableQuiz.quizTitle}
@@ -149,6 +162,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
               </p>
             </div>
           )}
+          {/* Edit/Save/Cancel buttons for quiz details */}
           {isEditingQuizDetails ? (
             <div className="flex space-x-3 ml-6">
               <button
@@ -177,6 +191,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
           )}
         </div>
 
+        {/* Questions Section */}
         <h3 className="text-3xl font-bold text-white mb-5 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
           Questions:
         </h3>
@@ -186,6 +201,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
             className="mb-8 p-6 rounded-xl border border-gray-700 bg-gray-800/60 shadow-lg"
           >
             <div className="flex justify-between items-start mb-4">
+              {/* Question Text - Editable or Display */}
               {editingQuestionId === q.id ? (
                 <textarea
                   className="text-lg font-medium w-full p-3 rounded-lg bg-gray-700 border border-purple-600 text-white placeholder-gray-400 resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -203,6 +219,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
                   {q.questionText}
                 </p>
               )}
+              {/* Edit/Save/Cancel buttons for individual questions */}
               {editingQuestionId === q.id ? (
                 <div className="flex space-x-2 ml-6 shrink-0">
                   <button
@@ -213,7 +230,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
                     <FaSave size={18} />
                   </button>
                   <button
-                    onClick={handleCancelEdit} // Reverts all changes in the modal, not just this question
+                    onClick={handleCancelEdit} // This cancels all edits in the modal
                     className="p-2 rounded-full bg-red-700 text-white hover:bg-red-600 transition duration-200 shadow-sm"
                     title="Cancel Question Edit"
                   >
@@ -231,10 +248,12 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
               )}
             </div>
 
+            {/* Options List */}
             <ul className="space-y-3 mt-4 ml-6">
               {q.options.map((option) => (
                 <li key={option.id} className="flex items-center">
                   {editingQuestionId === q.id ? (
+                    // Editable options with radio button for correct answer
                     <>
                       <input
                         type="radio"
@@ -260,6 +279,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
                       />
                     </>
                   ) : (
+                    // Display options, highlight correct answer
                     <span
                       className={`text-lg ${
                         option.id === q.correctAnswerId
@@ -274,6 +294,7 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
               ))}
             </ul>
 
+            {/* Explanation, Difficulty, Topic */}
             <div className="mt-5 text-sm space-y-2">
               <div className="flex items-center">
                 <span className="font-semibold text-gray-400">

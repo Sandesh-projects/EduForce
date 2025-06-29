@@ -1,25 +1,20 @@
-// frontend/src/components/PrivateRoute.jsx
-
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { toast } from "react-toastify"; // Import toast for notifications
+import { toast } from "react-toastify"; // For notifications
 
 /**
- * @typedef {'student' | 'teacher' | Array<'student' | 'teacher'>} RequiredRole
- */
-
-/**
- * PrivateRoute component for protecting routes based on authentication and role.
+ * PrivateRoute component to protect routes based on user authentication and role.
+ * It ensures only authorized users can access specific parts of the application.
  *
- * @param {object} props - The component props.
- * @param {RequiredRole} [props.requiredRole] - The role(s) required to access the route. Can be 'student', 'teacher', or ['student', 'teacher'].
- * @param {React.ReactNode} props.children - The child components to render if authorized.
+ * @param {object} props - Component properties.
+ * @param {'student' | 'teacher' | Array<'student' | 'teacher'>} [props.requiredRole] - The role(s) needed to access.
+ * @param {React.ReactNode} props.children - The content to render if authorized.
  */
 const PrivateRoute = ({ children, requiredRole }) => {
   const { isLoggedIn, user, loading } = useAuth();
 
-  // While authentication status is being determined, render nothing or a loading spinner
+  // Show a loading spinner while authentication status is being checked
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
@@ -29,48 +24,43 @@ const PrivateRoute = ({ children, requiredRole }) => {
     );
   }
 
-  // 1. Check if user is logged in
+  // 1. If the user is not logged in, redirect to the login page
   if (!isLoggedIn) {
     toast.error("Please log in to access this page.", { autoClose: 2000 });
     return <Navigate to="/login" replace />;
   }
 
-  // 2. If logged in, check role authorization
+  // 2. If a specific role is required, check user's role
   if (requiredRole) {
-    // Convert requiredRole to an array if it's a single string for consistent checking
+    // Ensure requiredRole is always an array for consistent checking
     const rolesToCheck = Array.isArray(requiredRole)
       ? requiredRole
       : [requiredRole];
 
-    // Check if the logged-in user's role is included in the allowed roles
+    // If user data or role is missing, or user's role isn't allowed
     if (!user || !user.role || !rolesToCheck.includes(user.role)) {
       let message = "Access Denied! ";
-      if (user && user.role) {
+      if (user?.role) {
         message += `Your role (${user.role}) is not authorized for this page.`;
       } else {
         message += `You need '${rolesToCheck.join(
           " or "
         )}' role to access this page.`;
       }
-      toast.error(message, { autoClose: 3000 }); // Show detailed message
-      console.error(
-        `Access Denied: User role ${
-          user?.role
-        } is not in required roles [${rolesToCheck.join(", ")}]`
-      );
+      toast.error(message, { autoClose: 3000 });
 
-      // Redirect based on role or to a general unauthorized page
+      // Redirect based on user's current (unauthorized) role or a general path
       if (user?.role === "student") {
         return <Navigate to="/student/home" replace />;
       } else if (user?.role === "teacher") {
         return <Navigate to="/teacher/home" replace />;
       } else {
-        return <Navigate to="/" replace />; // Fallback for undefined/unexpected roles
+        return <Navigate to="/" replace />; // Fallback for unknown roles
       }
     }
   }
 
-  // If authenticated and authorized, render the children
+  // If all checks pass (logged in and authorized role), render the protected content
   return children ? children : <Outlet />;
 };
 
