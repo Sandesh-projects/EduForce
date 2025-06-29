@@ -13,7 +13,7 @@ if (!GEMINI_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 export const generateMCQsFromText = async (textContent, numQuestions = 5, subject = '', userProvidedTopic = '') => {
     if (!textContent || textContent.trim().length === 0) {
@@ -34,41 +34,73 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         : `A concise title for the quiz based on the content`;
 
     const prompt = `
-        You are an expert educator designed to create engaging and effective multiple-choice questions (MCQs).
-        Generate exactly ${validatedNumQuestions} distinct multiple-choice questions (MCQs) in JSON format based on the following text.
-        Ensure each question has 4 options, only one of which is correct.
-        For each question, provide a unique ID, the question text, an array of options (each with an ID and text), the correctAnswerId (referencing the correct option's ID), a brief explanation, its difficulty level (Easy, Medium, Hard), and the specific topic it covers.
+        You are an expert educator who creates engaging, natural, and academically sound multiple-choice questions. Your goal is to assess understanding while making learning enjoyable and accessible.
 
-        The overall JSON structure should be:
+        CRITICAL GUIDELINES:
+        1. Write questions in a direct, conversational tone - avoid phrases like "According to the text," "Based on the passage," or "The text states"
+        2. Frame questions as if testing real-world knowledge and understanding, not just text comprehension
+        3. Make questions engaging and thought-provoking while maintaining academic rigor
+        4. Ensure all incorrect options (distractors) are plausible but clearly wrong to someone who understands the concept
+        5. Write explanations that enhance learning, not just justify the correct answer
+        6. Vary question difficulty to create a balanced assessment experience
+
+        QUESTION WRITING BEST PRACTICES:
+        - Start questions directly with "What," "How," "Why," "Which," etc.
+        - Focus on understanding concepts, applications, and relationships rather than memorization
+        - Make each question standalone - don't reference "the text" or "the passage"
+        - Use clear, concise language appropriate for the subject level
+        - Create realistic distractors based on common misconceptions or related concepts
+        - Ensure only one option is unambiguously correct
+
+        Generate exactly ${validatedNumQuestions} distinct multiple-choice questions based on the content provided below.
+        Each question must have exactly 4 options with only one correct answer.
+
+        IMPORTANT: Keep your response concise to avoid truncation. Use shorter explanations (max 2 sentences each).
+
+        Output Format (STRICT JSON - no additional text):
         {
           "quizTitle": "${quizTitleHint}",
-          "quizInstructions": "Answer carefully based on the provided text.",
+          "quizInstructions": "Choose the best answer for each question. Take your time to read carefully.",
           "questions": [
             {
-              "id": "q1", // Use simpler IDs like q1, q2
-              "questionText": "Your question here?",
+              "id": "q1",
+              "questionText": "Direct question without referencing the text?",
               "options": [
-                { "id": "q1_optionA", "text": "Option A text" }, // Use qID_optionLetter for clarity
-                { "id": "q1_optionB", "text": "Option B text" },
-                { "id": "q1_optionC", "text": "Option C text" },
-                { "id": "q1_optionD", "text": "Option D text" }
+                { "id": "q1_optionA", "text": "First plausible option" },
+                { "id": "q1_optionB", "text": "Second plausible option" },
+                { "id": "q1_optionC", "text": "Third plausible option" },
+                { "id": "q1_optionD", "text": "Fourth plausible option" }
               ],
               "correctAnswerId": "q1_optionB",
-              "explanation": "Brief explanation for the correct answer.",
-              "difficulty": "Medium",
-              "topic": "Specific topic or concept covered by the question"
+              "explanation": "Brief explanation (max 2 sentences).",
+              "difficulty": "Easy|Medium|Hard",
+              "topic": "Specific concept or topic area"
             }
-            // ... more questions
           ]
         }
 
-        Make sure the entire output is a valid JSON object. Do NOT include any introductory or concluding text outside the JSON.
-        Important: The quizTitle should be automatically derived by you from the text content and any provided subject/topic hints.
+        DIFFICULTY DISTRIBUTION GUIDE:
+        - Easy (30%): Basic definitions, simple recall, fundamental concepts
+        - Medium (50%): Application of concepts, analysis, connecting ideas
+        - Hard (20%): Complex analysis, synthesis, critical thinking, edge cases
 
-        Text content to generate MCQs from:
+        EXAMPLE TRANSFORMATIONS:
+        ❌ Poor: "According to the text, what is the primary purpose of a DBMS?"
+        ✅ Good: "What is the primary purpose of a Database Management System?"
+
+        ❌ Poor: "Based on the passage, which programming language is mentioned?"
+        ✅ Good: "Which programming language is commonly used for web development?"
+
+        ❌ Poor: "The text states that algorithms are important because..."
+        ✅ Good: "Why are algorithms fundamental to computer science?"
+
+        Now generate ${validatedNumQuestions} high-quality MCQs based on this content:
+
         ---
         ${textContent}
         ---
+
+        Remember: Output ONLY valid JSON with no additional text, comments, or explanations outside the JSON structure. Keep all content concise to ensure complete response.
     `;
 
     try {
@@ -80,10 +112,12 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
                 { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
             ],
-            // generationConfig: {
-            //     responseMimeType: "application/json", // This is for specific models and APIs, might not work directly for gemini-1.5-flash through this client library syntax
-            //     responseSchema: { ... your JSON schema definition if available ... } // Advanced feature
-            // }
+            generationConfig: {
+                temperature: 0.3, // Lower temperature for more consistent JSON structure
+                topP: 0.9,        // Focus on most probable tokens
+                topK: 20,         // Reduced for more focused responses
+                maxOutputTokens: 20000, // Increased to prevent truncation
+            }
         });
 
         const response = await result.response;
@@ -112,14 +146,11 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         } else {
             // If we can't even find a valid brace pair, it's severely malformed
             console.error("Gemini response does not contain a discernible JSON object after initial markdown strip.");
-            console.error("Problematic JSON string before final cleanup (full content):\n", jsonString); // Log full content for inspection
+            console.error("Problematic JSON string before final cleanup (full content):\n", jsonString);
             throw new Error("Gemini response is not a valid JSON string and could not be sanitized.");
         }
 
-        // Step 3: Remove potential invisible characters that break JSON.parse, excluding valid whitespace
-        // This regex targets characters that are not valid in JSON strings (control characters, etc.)
-        // but explicitly allows common whitespace like tab, newline, carriage return.
-        // It also handles Unicode non-breaking space (U+00A0) and other common problematic non-printable chars.
+        // Step 3: Remove potential invisible characters that break JSON.parse
         jsonString = jsonString.replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200F\u2028-\u202E\uFEFF]/g, function(char) {
             if (char === '\t' || char === '\n' || char === '\r') {
                 return char;
@@ -127,11 +158,43 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
             return '';
         });
 
-        // Add a check for trailing commas or other common syntax errors that might slip through
-        // This is a heuristic and might not catch all cases, but can help with common LLM mistakes
-        // For instance, removing a trailing comma before a closing bracket/brace
-        jsonString = jsonString.replace(/,\s*([\]}])/g, '$1');
+        // Step 4: Enhanced JSON repair for truncated responses
+        jsonString = jsonString.replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
+        jsonString = jsonString.replace(/([{,]\s*)(\w+):/g, '$1"$2":'); // Quote unquoted keys
 
+        // Check if JSON is truncated and attempt to repair
+        if (!jsonString.endsWith('}')) {
+            console.log("Detected potentially truncated JSON, attempting repair...");
+            
+            // Count opening and closing braces to determine truncation level
+            const openBraces = (jsonString.match(/{/g) || []).length;
+            const closeBraces = (jsonString.match(/}/g) || []).length;
+            const openBrackets = (jsonString.match(/\[/g) || []).length;
+            const closeBrackets = (jsonString.match(/\]/g) || []).length;
+            
+            // Attempt to close incomplete structures
+            let repairedJson = jsonString;
+            
+            // If we're in the middle of an object or array, try to close gracefully
+            if (repairedJson.lastIndexOf(',') > repairedJson.lastIndexOf('}') && 
+                repairedJson.lastIndexOf(',') > repairedJson.lastIndexOf(']')) {
+                // Remove trailing comma if it's the last character before we add closing braces
+                repairedJson = repairedJson.replace(/,\s*$/, '');
+            }
+            
+            // Close any open brackets first
+            for (let i = closeBrackets; i < openBrackets; i++) {
+                repairedJson += ']';
+            }
+            
+            // Close any open braces
+            for (let i = closeBraces; i < openBraces; i++) {
+                repairedJson += '}';
+            }
+            
+            jsonString = repairedJson;
+            console.log("JSON repair attempted");
+        }
 
         console.log("Cleaned JSON string (full content):\n", jsonString);
 
@@ -140,18 +203,103 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
             mcqsData = JSON.parse(jsonString);
         } catch (parseError) {
             console.error("Failed to parse JSON from Gemini response (after cleanup):", parseError);
-            console.error("Problematic JSON string (full content) causing parse error:\n", jsonString); // Log the full string
-            throw new Error("Failed to parse Gemini's MCQ response as JSON. Please ensure Gemini outputs valid JSON.");
+            console.error("Problematic JSON string (first 1000 chars):", jsonString.substring(0, 1000));
+            
+            // Enhanced recovery attempts for common truncation issues
+            try {
+                console.log("Attempting advanced JSON recovery...");
+                
+                // Try to find the last complete question
+                const questionsMatch = jsonString.match(/"questions":\s*\[(.*)/s);
+                if (questionsMatch) {
+                    let questionsContent = questionsMatch[1];
+                    
+                    // Find all complete question objects
+                    const questionPattern = /{[^{}]*"id":\s*"q\d+"[^{}]*}/g;
+                    const completeQuestions = questionsContent.match(questionPattern) || [];
+                    
+                    if (completeQuestions.length > 0) {
+                        // Reconstruct JSON with only complete questions
+                        const reconstructed = {
+                            quizTitle: "Generated Quiz",
+                            quizInstructions: "Choose the best answer for each question. Take your time to read carefully.",
+                            questions: []
+                        };
+                        
+                        // Parse each complete question
+                        for (const questionStr of completeQuestions) {
+                            try {
+                                const question = JSON.parse(questionStr);
+                                if (question.id && question.questionText && question.options && question.correctAnswerId) {
+                                    reconstructed.questions.push(question);
+                                }
+                            } catch (qError) {
+                                console.log("Skipping malformed question");
+                            }
+                        }
+                        
+                        if (reconstructed.questions.length > 0) {
+                            console.log(`Successfully recovered ${reconstructed.questions.length} questions`);
+                            mcqsData = reconstructed;
+                        } else {
+                            throw new Error("No complete questions could be recovered from truncated response");
+                        }
+                    } else {
+                        throw new Error("No recognizable question patterns found in truncated response");
+                    }
+                } else {
+                    throw new Error("Questions array not found in response");
+                }
+            } catch (recoveryError) {
+                console.error("Advanced recovery also failed:", recoveryError);
+                throw new Error(`Failed to parse Gemini's MCQ response as JSON. Original error: ${parseError.message}. Recovery error: ${recoveryError.message}`);
+            }
         }
 
-        if (mcqsData.questions && mcqsData.questions.length !== validatedNumQuestions) {
-            console.warn(`Gemini generated ${mcqsData.questions.length} questions, but ${validatedNumQuestions} were requested.`);
-            // Optionally, you might want to slice or re-request if the count is critical
+        // Validate the structure
+        if (!mcqsData.questions || !Array.isArray(mcqsData.questions)) {
+            throw new Error("Invalid MCQ data structure: missing or invalid questions array");
         }
+
+        // Quality validation
+        for (let i = 0; i < mcqsData.questions.length; i++) {
+            const question = mcqsData.questions[i];
+            
+            // Check for text reference phrases that should be avoided
+            const badPhrases = [
+                'according to the text',
+                'based on the passage',
+                'the text states',
+                'as mentioned in the text',
+                'from the reading',
+                'the passage indicates'
+            ];
+            
+            const questionLower = question.questionText.toLowerCase();
+            const hasBadPhrase = badPhrases.some(phrase => questionLower.includes(phrase));
+            
+            if (hasBadPhrase) {
+                console.warn(`Question ${i + 1} contains text reference phrase. Consider regenerating for better quality.`);
+            }
+            
+            // Validate structure
+            if (!question.options || question.options.length !== 4) {
+                throw new Error(`Question ${i + 1} does not have exactly 4 options`);
+            }
+            
+            if (!question.correctAnswerId) {
+                throw new Error(`Question ${i + 1} is missing correctAnswerId`);
+            }
+        }
+
+        if (mcqsData.questions.length !== validatedNumQuestions) {
+            console.warn(`Gemini generated ${mcqsData.questions.length} questions, but ${validatedNumQuestions} were requested.`);
+        }
+
         return mcqsData;
 
     } catch (error) {
         console.error('Error calling Gemini API for MCQ generation:', error);
-        throw new Error(`Failed to generate MCQs: ${error.message}. Ensure your API key is correct and network is stable. Also check the format of the PDF text content.`);
+        throw new Error(`Failed to generate MCQs: ${error.message}. Ensure your API key is correct and network is stable.`);
     }
 };
