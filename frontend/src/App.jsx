@@ -5,7 +5,7 @@ import {
   Navigate,
   useLocation,
   useNavigate,
-} from "react-router-dom"; // Add useNavigate here
+} from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Suspense, lazy } from "react";
@@ -53,7 +53,7 @@ const ROUTES = {
   STUDENT: {
     HOME: "/student/home",
     QUIZ_INVENTORY: "/student/quizzes/inventory",
-    TAKE_QUIZ: "/student/take-quiz/:quizCode",
+    TAKE_QUIZ: "/student/take-quiz", // Changed to base path for easier check
     QUIZ_REPORT: "/student/quizzes/report/:attemptId",
   },
 
@@ -99,7 +99,7 @@ const LoadingSpinner = () => (
 // Component to handle root route redirection (or any route where authenticated users shouldn't be)
 const RedirectIfAuthenticated = ({ children }) => {
   const { isLoggedIn, user, loading } = useAuth();
-  const navigate = useNavigate(); // useNavigate is now imported
+  const navigate = useNavigate();
   const location = useLocation();
 
   // If loading, just show spinner
@@ -155,6 +155,12 @@ function App() {
 // App content with routing logic
 const AppContent = () => {
   const { loading } = useAuth();
+  const location = useLocation(); // Get current location
+
+  // Determine if the header should be hidden
+  // The StudentTakeQuizPage path is `/student/take-quiz/:quizCode`
+  // We check if the pathname starts with the base of this route.
+  const hideHeader = location.pathname.startsWith(ROUTES.STUDENT.TAKE_QUIZ);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -162,7 +168,7 @@ const AppContent = () => {
 
   return (
     <div className="app">
-      <Header />
+      {!hideHeader && <Header />} {/* Conditionally render Header */}
       <main className="main-content">
         <PageLoader>
           <Routes>
@@ -210,7 +216,6 @@ const AppContent = () => {
           </Routes>
         </PageLoader>
       </main>
-
       <ToastContainer
         position="bottom-right"
         autoClose={3000}
@@ -266,7 +271,7 @@ const StudentRoutes = () => (
       }
     />
     <Route
-      path="take-quiz/:quizCode"
+      path="take-quiz/:quizCode" // Full path including parameter
       element={
         <ProtectedRoute requiredRole={USER_ROLES.STUDENT}>
           <StudentTakeQuizPage />
