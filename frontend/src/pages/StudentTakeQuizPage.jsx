@@ -29,6 +29,9 @@ const StudentTakeQuizPage = () => {
   const quizContainerRef = useRef(null);
   const WARNING_THRESHOLD = 3;
 
+  // State to track if submission is in progress, to prevent proctoring events
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Updated fullscreen function: use document.documentElement
   const enterFullscreen = useCallback(() => {
     const elem = document.documentElement;
@@ -56,6 +59,9 @@ const StudentTakeQuizPage = () => {
 
   const handleProctoringEvent = useCallback(
     (eventType, description) => {
+      // Do not log proctoring events if submission is in progress
+      if (isSubmitting) return;
+
       setProctoringEvents((prev) => {
         const newEvent = { timestamp: new Date(), eventType, description };
         const updatedEvents = [...prev, newEvent];
@@ -74,7 +80,7 @@ const StudentTakeQuizPage = () => {
         return updatedEvents;
       });
     },
-    [exitFullscreen, navigate]
+    [exitFullscreen, navigate, isSubmitting] // Add isSubmitting to dependencies
   );
 
   const handleFullscreenChange = useCallback(() => {
@@ -82,30 +88,38 @@ const StudentTakeQuizPage = () => {
       !document.fullscreenElement &&
       !document.webkitFullscreenElement &&
       !document.msFullscreenElement &&
-      isAttemptingQuiz
+      isAttemptingQuiz &&
+      !isSubmitting // Important: Ignore if submission is in progress
     ) {
       handleProctoringEvent(
         "fullscreen_exit",
         "Exited full-screen mode. Quiz terminated."
       );
-      setSubmitted(true);
+      setSubmitted(true); // Mark as submitted to prevent further actions
       exitFullscreen();
       navigate("/student/home");
     }
-  }, [isAttemptingQuiz, handleProctoringEvent, exitFullscreen, navigate]);
+  }, [
+    isAttemptingQuiz,
+    handleProctoringEvent,
+    exitFullscreen,
+    navigate,
+    isSubmitting,
+  ]); // Add isSubmitting
 
   const handleVisibilityChange = useCallback(() => {
-    if (document.hidden && isAttemptingQuiz) {
+    if (document.hidden && isAttemptingQuiz && !isSubmitting) {
       handleProctoringEvent("window_blur", "Switched to another tab/window.");
     }
-  }, [isAttemptingQuiz, handleProctoringEvent]);
+  }, [isAttemptingQuiz, handleProctoringEvent, isSubmitting]); // Add isSubmitting
 
   const handleCopyPasteAttempt = useCallback(
     (event) => {
       if (
         isAttemptingQuiz &&
         (event.ctrlKey || event.metaKey) &&
-        (event.key === "c" || event.key === "v" || event.key === "x")
+        (event.key === "c" || event.key === "v" || event.key === "x") &&
+        !isSubmitting
       ) {
         handleProctoringEvent(
           "copy_paste_attempt",
@@ -115,12 +129,12 @@ const StudentTakeQuizPage = () => {
         );
       }
     },
-    [isAttemptingQuiz, handleProctoringEvent]
+    [isAttemptingQuiz, handleProctoringEvent, isSubmitting] // Add isSubmitting
   );
 
   const handleContextMenu = useCallback(
     (e) => {
-      if (isAttemptingQuiz) {
+      if (isAttemptingQuiz && !isSubmitting) {
         e.preventDefault();
         handleProctoringEvent(
           "other_suspicious_activity",
@@ -128,14 +142,15 @@ const StudentTakeQuizPage = () => {
         );
       }
     },
-    [isAttemptingQuiz, handleProctoringEvent]
+    [isAttemptingQuiz, handleProctoringEvent, isSubmitting] // Add isSubmitting
   );
 
   const handleKeyDownForDevTools = useCallback(
     (e) => {
       if (
         isAttemptingQuiz &&
-        (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I"))
+        (e.key === "F12" || (e.ctrlKey && e.shiftKey && e.key === "I")) &&
+        !isSubmitting
       ) {
         e.preventDefault();
         handleProctoringEvent(
@@ -144,11 +159,12 @@ const StudentTakeQuizPage = () => {
         );
       }
     },
-    [isAttemptingQuiz, handleProctoringEvent]
+    [isAttemptingQuiz, handleProctoringEvent, isSubmitting] // Add isSubmitting
   );
 
   useEffect(() => {
-    if (isAttemptingQuiz) {
+    if (isAttemptingQuiz && !isSubmitting) {
+      // Only attach listeners if actively attempting and not submitting
       document.addEventListener("fullscreenchange", handleFullscreenChange);
       document.addEventListener(
         "webkitfullscreenchange",
@@ -166,6 +182,7 @@ const StudentTakeQuizPage = () => {
     }
 
     return () => {
+      // Always remove listeners on cleanup to prevent memory leaks or unintended behavior
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener(
         "webkitfullscreenchange",
@@ -179,13 +196,14 @@ const StudentTakeQuizPage = () => {
       document.removeEventListener("keydown", handleCopyPasteAttempt);
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyDownForDevTools);
-      document.body.style.userSelect = "";
+      document.body.style.userSelect = ""; // Reset styles
       document.body.style.webkitUserSelect = "";
       document.body.style.MozUserSelect = "";
       document.body.style.msUserSelect = "";
     };
   }, [
     isAttemptingQuiz,
+    isSubmitting, // Add isSubmitting to dependencies for useEffect
     handleFullscreenChange,
     handleVisibilityChange,
     handleCopyPasteAttempt,
@@ -267,7 +285,48 @@ const StudentTakeQuizPage = () => {
     }));
   };
 
-  const handleSubmitQuiz = async () => {
+  // New function to handle quiz submission confirmation via toast
+  const confirmSubmit = () => {
+    if (submitted || loading) return; // Prevent multiple submissions or if already loading
+
+    toast.info(
+      <div className="flex flex-col items-center">
+        <p className="text-lg font-semibold mb-3">
+          Are you sure you want to submit the quiz?
+        </p>
+        <p className="text-sm text-gray-300 mb-4">
+          You cannot change answers after this.
+        </p>
+        <div className="flex space-x-4">
+          <button
+            className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
+            onClick={() => {
+              toast.dismiss(); // Dismiss the current toast
+              handleSubmitQuizConfirmed(); // Proceed with submission
+            }}
+          >
+            Yes, Submit
+          </button>
+          <button
+            className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+            onClick={() => toast.dismiss()} // Dismiss the current toast
+          >
+            No, Cancel
+          </button>
+        </div>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: false, // Do not auto-close, wait for user interaction
+        closeButton: false,
+        draggable: false,
+        closeOnClick: false,
+        className: "bg-gray-800 text-white rounded-lg shadow-xl",
+      }
+    );
+  };
+
+  const handleSubmitQuizConfirmed = async () => {
     if (isSuspicious && proctoringEvents.length >= WARNING_THRESHOLD) {
       toast.error(
         "Quiz terminated due to suspicious activity and cannot be submitted."
@@ -277,16 +336,10 @@ const StudentTakeQuizPage = () => {
       return;
     }
 
-    const confirmSubmit = window.confirm(
-      "Are you sure you want to submit the quiz? You cannot change answers after this."
-    );
-    if (!confirmSubmit) {
-      return;
-    }
-
-    setSubmitted(true);
-    setLoading(true);
-    exitFullscreen();
+    setIsSubmitting(true); // Set submitting state to true
+    setSubmitted(true); // Mark as submitted
+    setLoading(true); // Show loading state for submission
+    exitFullscreen(); // Exit fullscreen once submission process begins
 
     const answersToSubmit = Object.keys(selectedAnswers).map((questionId) => ({
       questionId,
@@ -308,6 +361,7 @@ const StudentTakeQuizPage = () => {
       setError("Failed to submit quiz.");
     } finally {
       setLoading(false);
+      setIsSubmitting(false); // Reset submitting state
     }
   };
 
@@ -499,7 +553,7 @@ const StudentTakeQuizPage = () => {
 
           <div className="mt-auto text-center pt-4 border-t border-gray-700">
             <button
-              onClick={handleSubmitQuiz}
+              onClick={confirmSubmit} // Call the toast confirmation function
               disabled={submitted || loading}
               className={`px-8 py-3 rounded-full text-lg font-semibold transition-all duration-300 ${
                 submitted || loading
