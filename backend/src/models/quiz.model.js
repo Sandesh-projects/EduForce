@@ -1,6 +1,7 @@
-// backend/src/models/quiz.model.js
+// Quiz model definition
 import mongoose from 'mongoose';
 
+// Define the quiz schema
 const quizSchema = mongoose.Schema(
     {
         teacher: {
@@ -13,32 +14,35 @@ const quizSchema = mongoose.Schema(
             required: [true, 'Quiz title is required'],
             trim: true,
         },
-        // New fields to store user-provided subject and topic
+        // Subject of the quiz
         subject: {
             type: String,
             required: [true, 'Subject is required'],
             trim: true,
         },
-        userProvidedTopic: { // Renamed from 'topic' to avoid conflict with 'topic' in questions array
+        // User-provided topic for the quiz
+        userProvidedTopic: {
             type: String,
             required: [true, 'Topic is required'],
             trim: true,
         },
-        quizCode: { // New field for the unique quiz code
+        // Unique code for the quiz
+        quizCode: {
             type: String,
             required: [true, 'Quiz code is required'],
-            unique: true, // Ensure quiz codes are unique
+            unique: true,
             trim: true,
-            minlength: 6, // Minimum length for the code
-            maxlength: 10, // Maximum length for the code
+            minlength: 6,
+            maxlength: 10,
         },
         quizInstructions: {
             type: String,
             default: 'Answer carefully based on the provided text.',
         },
-        published: { // <--- MODIFIED: Default changed to true
+        // Quiz publishing status
+        published: {
             type: Boolean,
-            default: true, // Quizzes are published by default when created
+            default: true, // Quizzes are published by default
         },
         questions: [
             {
@@ -57,12 +61,12 @@ const quizSchema = mongoose.Schema(
                     enum: ['Easy', 'Medium', 'Hard'],
                     default: 'Medium',
                 },
-                topic: { type: String }, // This 'topic' is for individual question topics from Gemini
+                topic: { type: String }, // Topic for individual question
             },
         ],
     },
     {
-        timestamps: true,
+        timestamps: true, // Adds createdAt and updatedAt fields
     }
 );
 

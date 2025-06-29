@@ -1,35 +1,33 @@
-// backend/src/services/gemini.services.student.submit.js
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
 import 'dotenv/config';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
-    console.error("GEMINI_API_KEY not found in environment variables. Please set it.");
+    console.error("GEMINI_API_KEY not found in environment variables.");
     throw new Error("GEMINI_API_KEY is not set. Cannot perform AI analysis.");
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Using gemini-pro for better quality
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // Function to safely parse JSON from Gemini's text response
 const safeParseJson = (jsonString) => {
     try {
-        // Step 1: Remove common markdown code block wrappers if present
+        // Remove common markdown code block wrappers
         let cleanedString = jsonString.trim();
         if (cleanedString.startsWith('```json') && cleanedString.endsWith('```')) {
             cleanedString = cleanedString.substring(7, cleanedString.length - 3).trim();
-        } else if (cleanedString.startsWith('```') && cleanedString.endsWith('```')) { // General code block
+        } else if (cleanedString.startsWith('```') && cleanedString.endsWith('```')) {
             cleanedString = cleanedString.substring(3, cleanedString.length - 3).trim();
         }
 
-        // Step 2: Remove trailing commas before closing brackets/braces (a common JSON linting error from LLMs)
+        // Remove trailing commas before closing brackets/braces
         cleanedString = cleanedString.replace(/,\s*([\]}])/g, '$1');
 
         return JSON.parse(cleanedString);
     } catch (e) {
         console.error('Failed to parse JSON from AI response:', e.message);
-        console.error('Problematic string that caused parsing error:', jsonString);
         throw new Error('AI response is not a valid JSON format.');
     }
 };
@@ -60,7 +58,7 @@ export const generateQuizAttemptAnalysis = async (quizQuestions, studentAnswers,
             correctAnswerId: q.correctAnswerId,
             difficulty: q.difficulty,
             topic: q.topic,
-            explanation: q.explanation // Include explanation for report
+            explanation: q.explanation
         });
     });
 
@@ -68,7 +66,7 @@ export const generateQuizAttemptAnalysis = async (quizQuestions, studentAnswers,
         const question = questionMap.get(studentAns.questionId);
         if (!question) {
             console.warn(`Question with ID ${studentAns.questionId} not found in original quiz data.`);
-            return null; // Skip if question data is missing
+            return null;
         }
         const selectedOption = question.options.find(opt => opt.id === studentAns.selectedOptionId);
         const correctOption = question.options.find(opt => opt.id === question.correctAnswerId);
@@ -83,7 +81,7 @@ export const generateQuizAttemptAnalysis = async (quizQuestions, studentAnswers,
             difficulty: question.difficulty,
             topic: question.topic,
         };
-    }).filter(Boolean); // Remove any null entries
+    }).filter(Boolean);
 
     const percentageScore = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
 
@@ -112,19 +110,11 @@ export const generateQuizAttemptAnalysis = async (quizQuestions, studentAnswers,
             "score": ${score},
             "totalQuestions": ${totalQuestions},
             "percentage": ${percentageScore.toFixed(2)},
-            "message": "Excellent performance!" // or "Good effort!", "Needs more practice." etc.
+            "message": "Excellent performance!"
           },
-          "strengths": [
-            { "topic": "Topic A", "performance": "Strong" },
-            // ... more
-          ],
-          "areasForImprovement": [
-            { "topic": "Topic B", "suggestion": "Review concepts on X and Y." },
-            // ... more
-          ],
-          "questionFeedback": [
-            // Array of objects from detailedFeedback
-          ],
+          "strengths": [],
+          "areasForImprovement": [],
+          "questionFeedback": [],
           "proctoringStatus": {
             "isSuspicious": ${isSuspicious},
             "feedback": "${proctoringFeedback}"
@@ -151,9 +141,6 @@ export const generateQuizAttemptAnalysis = async (quizQuestions, studentAnswers,
 
         const response = await result.response;
         let text = response.text();
-
-        console.log("Raw Gemini analysis response (start):", text.substring(0, Math.min(text.length, 500)) + (text.length > 500 ? '...' : ''));
-        console.log("Raw Gemini analysis response (end):", text.substring(Math.max(0, text.length - 500)) + (text.length > 500 ? '...' : ''));
 
         // Use the safe JSON parsing function
         let analysisData = safeParseJson(text);

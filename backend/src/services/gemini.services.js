@@ -1,14 +1,10 @@
-// backend/src/services/gemini.services.js
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from "@google/generative-ai";
-import 'dotenv/config'; // Ensure dotenv is configured to load environment variables
+import 'dotenv/config';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY) {
-    console.error("GEMINI_API_KEY not found in environment variables. Please set it.");
-    // In a production environment, you might want to throw an error or exit differently.
-    // For now, we'll let it proceed but expect failures if API key is truly missing.
-    // process.exit(1); // Re-consider if you want the server to fail fast without API key
+    console.error("GEMINI_API_KEY not found in environment variables.");
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -143,22 +139,19 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
             ],
             generationConfig: {
-                temperature: 0.3, // Lower temperature for more consistent JSON structure
-                topP: 0.9,        // Focus on most probable tokens
-                topK: 20,         // Reduced for more focused responses
-                maxOutputTokens: 20000, // Increased to prevent truncation
+                temperature: 0.3,
+                topP: 0.9,
+                topK: 20,
+                maxOutputTokens: 20000,
             }
         });
 
         const response = await result.response;
         let text = response.text();
 
-        // Log the full raw response to identify if truncation is happening at the API level
-        console.log("Full Raw Gemini response text:\n", text);
-
         let jsonString = text;
 
-        // Step 1: Try to extract JSON from markdown code block first
+        // Try to extract JSON from markdown code block first
         const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch && jsonMatch[1]) {
             jsonString = jsonMatch[1];
@@ -166,21 +159,17 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
 
         jsonString = jsonString.trim();
 
-        // Step 2: Aggressively remove any leading/trailing characters outside the main JSON object
-        // This is a more robust way to find the actual JSON content
+        // Aggressively remove any leading/trailing characters outside the main JSON object
         const firstBraceIndex = jsonString.indexOf('{');
         const lastBraceIndex = jsonString.lastIndexOf('}');
 
         if (firstBraceIndex !== -1 && lastBraceIndex !== -1 && lastBraceIndex > firstBraceIndex) {
             jsonString = jsonString.substring(firstBraceIndex, lastBraceIndex + 1);
         } else {
-            // If we can't even find a valid brace pair, it's severely malformed
-            console.error("Gemini response does not contain a discernible JSON object after initial markdown strip.");
-            console.error("Problematic JSON string before final cleanup (full content):\n", jsonString);
-            throw new Error("Gemini response is not a valid JSON string and could not be sanitized.");
+            throw new Error("Gemini response does not contain a discernible JSON object after initial markdown strip.");
         }
 
-        // Step 3: Remove potential invisible characters that break JSON.parse
+        // Remove potential invisible characters that break JSON.parse
         jsonString = jsonString.replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200F\u2028-\u202E\uFEFF]/g, function(char) {
             if (char === '\t' || char === '\n' || char === '\r') {
                 return char;
@@ -188,75 +177,55 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
             return '';
         });
 
-        // Step 4: Enhanced JSON repair for truncated responses
+        // Enhanced JSON repair for truncated responses
         jsonString = jsonString.replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
         jsonString = jsonString.replace(/([{,]\s*)(\w+):/g, '$1"$2":'); // Quote unquoted keys
 
         // Check if JSON is truncated and attempt to repair
         if (!jsonString.endsWith('}')) {
-            console.log("Detected potentially truncated JSON, attempting repair...");
+            let repairedJson = jsonString;
             
-            // Count opening and closing braces to determine truncation level
             const openBraces = (jsonString.match(/{/g) || []).length;
             const closeBraces = (jsonString.match(/}/g) || []).length;
             const openBrackets = (jsonString.match(/\[/g) || []).length;
             const closeBrackets = (jsonString.match(/\]/g) || []).length;
             
-            // Attempt to close incomplete structures
-            let repairedJson = jsonString;
-            
-            // If we're in the middle of an object or array, try to close gracefully
             if (repairedJson.lastIndexOf(',') > repairedJson.lastIndexOf('}') && 
                 repairedJson.lastIndexOf(',') > repairedJson.lastIndexOf(']')) {
-                // Remove trailing comma if it's the last character before we add closing braces
                 repairedJson = repairedJson.replace(/,\s*$/, '');
             }
             
-            // Close any open brackets first
             for (let i = closeBrackets; i < openBrackets; i++) {
                 repairedJson += ']';
             }
             
-            // Close any open braces
             for (let i = closeBraces; i < openBraces; i++) {
                 repairedJson += '}';
             }
             
             jsonString = repairedJson;
-            console.log("JSON repair attempted");
         }
-
-        console.log("Cleaned JSON string (full content):\n", jsonString);
 
         let mcqsData;
         try {
             mcqsData = JSON.parse(jsonString);
         } catch (parseError) {
-            console.error("Failed to parse JSON from Gemini response (after cleanup):", parseError);
-            console.error("Problematic JSON string (first 1000 chars):", jsonString.substring(0, 1000));
-            
-            // Enhanced recovery attempts for common truncation issues
+            // Advanced recovery attempts for common truncation issues
             try {
-                console.log("Attempting advanced JSON recovery...");
-                
-                // Try to find the last complete question
                 const questionsMatch = jsonString.match(/"questions":\s*\[(.*)/s);
                 if (questionsMatch) {
                     let questionsContent = questionsMatch[1];
                     
-                    // Find all complete question objects
                     const questionPattern = /{[^{}]*"id":\s*"q\d+"[^{}]*}/g;
                     const completeQuestions = questionsContent.match(questionPattern) || [];
                     
                     if (completeQuestions.length > 0) {
-                        // Reconstruct JSON with only complete questions
                         const reconstructed = {
                             quizTitle: "Generated Quiz",
                             quizInstructions: "Choose the best answer for each question. Take your time to read carefully.",
                             questions: []
                         };
                         
-                        // Parse each complete question
                         for (const questionStr of completeQuestions) {
                             try {
                                 const question = JSON.parse(questionStr);
@@ -264,12 +233,11 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                                     reconstructed.questions.push(question);
                                 }
                             } catch (qError) {
-                                console.log("Skipping malformed question");
+                                // Skip malformed question
                             }
                         }
                         
                         if (reconstructed.questions.length > 0) {
-                            console.log(`Successfully recovered ${reconstructed.questions.length} questions`);
                             mcqsData = reconstructed;
                         } else {
                             throw new Error("No complete questions could be recovered from truncated response");
@@ -281,7 +249,6 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                     throw new Error("Questions array not found in response");
                 }
             } catch (recoveryError) {
-                console.error("Advanced recovery also failed:", recoveryError);
                 throw new Error(`Failed to parse Gemini's MCQ response as JSON. Original error: ${parseError.message}. Recovery error: ${recoveryError.message}`);
             }
         }
@@ -296,7 +263,6 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
         for (let i = 0; i < mcqsData.questions.length; i++) {
             const question = mcqsData.questions[i];
             
-            // Check for text reference phrases that should be avoided
             const badPhrases = [
                 'according to the text',
                 'based on the passage',
@@ -313,12 +279,10 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 console.warn(`Question ${i + 1} contains text reference phrase. Consider regenerating for better quality.`);
             }
             
-            // Track question types
             if (question.questionType === 'mathematical') {
                 mathematicalQuestions++;
             }
             
-            // Validate structure
             if (!question.options || question.options.length !== 4) {
                 throw new Error(`Question ${i + 1} does not have exactly 4 options`);
             }
@@ -327,9 +291,6 @@ export const generateMCQsFromText = async (textContent, numQuestions = 5, subjec
                 throw new Error(`Question ${i + 1} is missing correctAnswerId`);
             }
         }
-
-        // Log question type distribution
-        console.log(`Generated ${mcqsData.questions.length} questions: ${mathematicalQuestions} mathematical, ${mcqsData.questions.length - mathematicalQuestions} theoretical/applied`);
 
         if (mcqsData.questions.length !== validatedNumQuestions) {
             console.warn(`Gemini generated ${mcqsData.questions.length} questions, but ${validatedNumQuestions} were requested.`);
