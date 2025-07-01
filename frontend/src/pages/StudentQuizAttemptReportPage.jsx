@@ -15,7 +15,6 @@ import {
   Clock,
   AlertTriangle,
   MessageSquare,
-  ClipboardCheck,
   Download,
   ArrowLeft,
   Star,
@@ -25,8 +24,10 @@ import {
   Calendar,
   User,
   FileText,
-  Shield, // Renamed from ClipboardCheck for clarity in UI for security
+  Shield,
 } from "lucide-react";
+import jsPDF from "jspdf"; // Assuming jspdf is imported for PDF generation
+import "jspdf-autotable"; // Assuming jspdf-autotable is used for tables
 
 const StudentQuizAttemptReportPage = () => {
   const { attemptId } = useParams();
@@ -68,17 +69,79 @@ const StudentQuizAttemptReportPage = () => {
   // Helper to find original question details including correct answer
   const getQuestionDetails = useCallback(
     (questionId) => {
+      // Ensure attemptData and quiz exist before trying to find questions
       return attemptData?.quiz?.questions.find((q) => q.id === questionId);
     },
     [attemptData]
   );
 
+  // Helper to determine performance grade and associated colors
+  const getPerformanceGrade = (percentage) => {
+    if (percentage >= 90)
+      return {
+        grade: "A+",
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/20",
+        border: "border-emerald-500/30",
+      };
+    if (percentage >= 80)
+      return {
+        grade: "A",
+        color: "text-green-400",
+        bg: "bg-green-500/20",
+        border: "border-green-500/30",
+      };
+    if (percentage >= 70)
+      return {
+        grade: "B",
+        color: "text-blue-400",
+        bg: "bg-blue-500/20",
+        border: "border-blue-500/30",
+      };
+    if (percentage >= 60)
+      return {
+        grade: "C",
+        color: "text-yellow-400",
+        bg: "bg-yellow-500/20",
+        border: "border-yellow-500/30",
+      };
+    return {
+      grade: "F",
+      color: "text-red-400",
+      bg: "bg-red-500/20",
+      border: "border-red-500/30",
+    };
+  };
+
+  // Destructure attemptData safely using optional chaining and default empty object
+  // This should be after `attemptData` state is defined and potentially updated by `fetchAttemptReport`
+  const {
+    quizTitle,
+    quizSubject,
+    quizTopic,
+    score,
+    totalQuestions,
+    percentage,
+    submittedAt,
+    isSuspicious,
+    geminiAnalytics,
+    student, // Added student to destructuring for PDF filename
+  } = attemptData || {};
+
+  const performanceGrade = getPerformanceGrade(percentage);
+
   // Enhanced PDF generation with jsPDF
   const generateDetailedPDF = async () => {
-    if (!attemptData) return;
+    setDownloadingPdf(true); // Start loading state for PDF
+    if (!attemptData) {
+      console.warn("PDF generation aborted: attemptData is not available.");
+      toast.error("Report data is not available for PDF generation.");
+      setDownloadingPdf(false);
+      return;
+    }
 
     try {
-      const { jsPDF } = await import("jspdf");
+      console.log("Starting PDF generation...");
       const doc = new jsPDF("p", "mm", "a4"); // 'p' for portrait, 'mm' for millimeters, 'a4' for size
       let yPosition = 20; // Initial Y position
       const margin = 20;
@@ -120,24 +183,20 @@ const StudentQuizAttemptReportPage = () => {
             doc.internal.pageSize.width - margin - 10,
             10
           );
+          console.log(
+            `Page break occurred. New page: ${doc.internal.getNumberOfPages()}`
+          );
           return margin; // Reset yPosition to top margin
         }
         return currentY;
       };
 
-      // Destructure attempt data for PDF content
-      const {
+      console.log("Attempt Data Destructured for PDF:", {
         quizTitle,
-        quizSubject,
-        quizTopic,
         score,
-        totalQuestions,
         percentage,
-        submittedAt,
         isSuspicious,
-        geminiAnalytics,
-        student,
-      } = attemptData;
+      });
 
       // --- Header Section (Top Banner) ---
       doc.setFillColor(99, 102, 241); // Indigo-500
@@ -152,6 +211,7 @@ const StudentQuizAttemptReportPage = () => {
         "bold"
       );
       yPosition = 40; // Reset y for main content below header
+      console.log("PDF Header section added. Current Y:", yPosition);
 
       // --- Quiz Information Section ---
       yPosition = checkPageBreak(yPosition, 50);
@@ -164,7 +224,7 @@ const StudentQuizAttemptReportPage = () => {
 
       let tempY = yPosition + 7;
       tempY = addWrappedText(
-        `Quiz Title: ${quizTitle}`,
+        `Quiz Title: ${quizTitle || "N/A"}`,
         margin + 5,
         tempY,
         contentWidth - 10,
@@ -172,20 +232,23 @@ const StudentQuizAttemptReportPage = () => {
         "bold"
       );
       tempY = addWrappedText(
-        `Subject: ${quizSubject} | Topic: ${quizTopic}`,
+        `Subject: ${quizSubject || "N/A"} | Topic: ${quizTopic || "N/A"}`,
         margin + 5,
         tempY + 3,
         contentWidth - 10,
         10
       );
       tempY = addWrappedText(
-        `Submitted On: ${new Date(submittedAt).toLocaleString()}`,
+        `Submitted On: ${
+          submittedAt ? new Date(submittedAt).toLocaleString() : "N/A"
+        }`,
         margin + 5,
         tempY + 3,
         contentWidth - 10,
         10
       );
       yPosition += 50 + sectionSpacing; // Update yPosition for next section
+      console.log("PDF Quiz Info section added. Current Y:", yPosition);
 
       // --- Performance Summary Section ---
       yPosition = checkPageBreak(yPosition, 70);
@@ -223,7 +286,7 @@ const StudentQuizAttemptReportPage = () => {
         "bold"
       );
       addWrappedText(
-        `${score}/${totalQuestions}`,
+        `${score || 0}/${totalQuestions || 0}`,
         margin + 2,
         yPosition + 18,
         scoreBoxWidth - 4,
@@ -258,7 +321,7 @@ const StudentQuizAttemptReportPage = () => {
         [255, 255, 255]
       );
       addWrappedText(
-        `${percentage?.toFixed(1)}%`,
+        `${percentage?.toFixed(1) || 0}%`,
         margin + scoreBoxWidth + scoreBoxPadding + 2,
         yPosition + 18,
         scoreBoxWidth - 4,
@@ -268,7 +331,8 @@ const StudentQuizAttemptReportPage = () => {
       );
 
       // Box 3: Status
-      const statusColor = percentage >= 60 ? [76, 175, 80] : [244, 67, 54]; // Green or Red
+      const statusColor =
+        (percentage || 0) >= 60 ? [76, 175, 80] : [244, 67, 54]; // Green or Red
       doc.setFillColor(...statusColor);
       doc.rect(
         margin + 2 * (scoreBoxWidth + scoreBoxPadding),
@@ -295,7 +359,7 @@ const StudentQuizAttemptReportPage = () => {
         [255, 255, 255]
       );
       addWrappedText(
-        percentage >= 60 ? "PASSED" : "FAILED",
+        (percentage || 0) >= 60 ? "PASSED" : "FAILED",
         margin + 2 * (scoreBoxWidth + scoreBoxPadding) + 2,
         yPosition + 18,
         scoreBoxWidth - 4,
@@ -305,6 +369,10 @@ const StudentQuizAttemptReportPage = () => {
       );
 
       yPosition += scoreBoxHeight + sectionSpacing; // Update yPosition after score boxes
+      console.log(
+        "PDF Performance Summary section added. Current Y:",
+        yPosition
+      );
 
       // Security Status
       yPosition = checkPageBreak(yPosition, 30);
@@ -334,9 +402,11 @@ const StudentQuizAttemptReportPage = () => {
         10
       );
       yPosition += sectionSpacing;
+      console.log("PDF Security Status section added. Current Y:", yPosition);
 
       // --- AI Analytics Section ---
       if (geminiAnalytics) {
+        console.log("AI Analytics data found. Processing for PDF...");
         yPosition = checkPageBreak(yPosition, 40);
         doc.setFillColor(156, 39, 176); // Purple-700
         doc.rect(margin, yPosition, contentWidth, 8, "F");
@@ -370,6 +440,7 @@ const StudentQuizAttemptReportPage = () => {
             10
           );
           yPosition += sectionSpacing;
+          console.log("PDF Overall Summary added. Current Y:", yPosition);
         }
 
         // Strengths
@@ -386,10 +457,10 @@ const StudentQuizAttemptReportPage = () => {
             12,
             "bold"
           );
-          geminiAnalytics.strengths.forEach((strength) => {
-            const strengthText = `• ${strength.topic}: ${strength.performance}`;
+          geminiAnalytics.strengths.forEach((strengthString) => {
+            // Use strengthString directly
             yPosition = addWrappedText(
-              strengthText,
+              `• ${strengthString}`, // Directly use the string
               margin + 5,
               yPosition + 3,
               contentWidth - 5,
@@ -398,6 +469,7 @@ const StudentQuizAttemptReportPage = () => {
             );
           });
           yPosition += sectionSpacing;
+          console.log("PDF Strengths added. Current Y:", yPosition);
         }
 
         // Areas for Improvement
@@ -417,10 +489,10 @@ const StudentQuizAttemptReportPage = () => {
             12,
             "bold"
           );
-          geminiAnalytics.areasForImprovement.forEach((area) => {
-            const improvementText = `• ${area.topic}: ${area.suggestion}`;
+          geminiAnalytics.areasForImprovement.forEach((areaString) => {
+            // Use areaString directly
             yPosition = addWrappedText(
-              improvementText,
+              `• ${areaString}`, // Directly use the string
               margin + 5,
               yPosition + 3,
               contentWidth - 5,
@@ -429,6 +501,7 @@ const StudentQuizAttemptReportPage = () => {
             );
           });
           yPosition += sectionSpacing;
+          console.log("PDF Areas for Improvement added. Current Y:", yPosition);
         }
 
         // Question-by-Question Feedback
@@ -449,24 +522,34 @@ const StudentQuizAttemptReportPage = () => {
             [255, 255, 255]
           );
           yPosition += 8; // Space after section header
+          console.log("Starting PDF Detailed Question Analysis.");
 
           geminiAnalytics.questionFeedback.forEach((feedback, index) => {
             yPosition = checkPageBreak(yPosition, 70); // Estimate space needed for each question block
 
             const originalQuestion = getQuestionDetails(feedback.questionId);
+            console.log(
+              `Processing Question ${index + 1}. Original Question Data:`,
+              originalQuestion
+            );
+
             const selectedOptionText =
               originalQuestion?.options?.find(
                 (opt) => opt.id === feedback.selectedOptionId
-              )?.text || feedback.selectedAnswer;
+              )?.text ||
+              feedback.selectedAnswer ||
+              "N/A"; // Added N/A fallback
             const correctAnswerText =
               originalQuestion?.options?.find(
                 (opt) => opt.id === originalQuestion?.correctAnswerId
-              )?.text || feedback.correctAnswer;
+              )?.text ||
+              feedback.correctAnswer ||
+              "N/A"; // Added N/A fallback
 
             // Question Text
             yPosition = addWrappedText(
               `Question ${index + 1}: ${
-                originalQuestion?.questionText || feedback.questionText
+                originalQuestion?.questionText || feedback.questionText || "N/A"
               }`,
               margin,
               yPosition,
@@ -539,8 +622,14 @@ const StudentQuizAttemptReportPage = () => {
               [100, 100, 100]
             );
             yPosition += sectionSpacing; // Space between questions
+            console.log(
+              `PDF Question ${index + 1} processed. Current Y:`,
+              yPosition
+            );
           });
         }
+      } else {
+        console.log("No Gemini Analytics data available for PDF.");
       }
 
       // --- Footer ---
@@ -558,90 +647,35 @@ const StudentQuizAttemptReportPage = () => {
         doc.internal.pageSize.width - margin - 10,
         pageHeight - 8
       );
+      console.log("PDF Footer added.");
 
       // Save the PDF
-      const sanitizedStudentName = attemptData.student?.fullName
-        ? attemptData.student.fullName
-            .replace(/[^a-zA-Z0-9]/g, "_")
-            .toLowerCase()
+      const sanitizedStudentName = student?.fullName
+        ? student.fullName.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
         : "student";
-      const sanitizedQuizTitle = attemptData.quizTitle
-        ? attemptData.quizTitle.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
+      const sanitizedQuizTitle = quizTitle
+        ? quizTitle.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
         : "quiz";
 
       const filename = `EduForce_QuizReport_${sanitizedQuizTitle}_${sanitizedStudentName}_${
         new Date().toISOString().split("T")[0]
       }.pdf`;
-      doc.save(filename);
+
+      console.log(`Attempting to save PDF as: ${filename}`);
+      doc.save(filename); // This is the line that triggers the download
 
       toast.success("PDF report generated and downloaded successfully!");
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      console.error("Critical Error generating PDF:", error); // More prominent error log
       toast.error("Failed to generate PDF report: " + error.message);
     } finally {
-      setDownloadingPdf(false);
+      setDownloadingPdf(false); // Ensure setDownloadingPdf(false) is called to reset UI state
     }
   };
 
-  // Handle PDF download button click
-  const handleDownloadButtonClick = useCallback(async () => {
-    setDownloadingPdf(true); // Indicate that download is in progress
-    // We are now only using client-side PDF generation, no need for API fallback in this component.
-    await generateDetailedPDF();
-    // setDownloadingPdf will be set to false in generateDetailedPDF's finally block
-  }, [generateDetailedPDF]);
-
-  const {
-    quizTitle,
-    quizSubject,
-    quizTopic,
-    score,
-    totalQuestions,
-    percentage,
-    submittedAt,
-    isSuspicious,
-    geminiAnalytics,
-  } = attemptData || {}; // Add default empty object to avoid errors if attemptData is null/undefined
-
-  const performanceGrade = getPerformanceGrade(percentage);
-
-  // Helper to determine performance grade and associated colors
-  function getPerformanceGrade(percentage) {
-    if (percentage >= 90)
-      return {
-        grade: "A+",
-        color: "text-emerald-400",
-        bg: "bg-emerald-500/20",
-        border: "border-emerald-500/30",
-      };
-    if (percentage >= 80)
-      return {
-        grade: "A",
-        color: "text-green-400",
-        bg: "bg-green-500/20",
-        border: "border-green-500/30",
-      };
-    if (percentage >= 70)
-      return {
-        grade: "B",
-        color: "text-blue-400",
-        bg: "bg-blue-500/20",
-        border: "border-blue-500/30",
-      };
-    if (percentage >= 60)
-      return {
-        grade: "C",
-        color: "text-yellow-400",
-        bg: "bg-yellow-500/20",
-        border: "border-yellow-500/30",
-      };
-    return {
-      grade: "F",
-      color: "text-red-400",
-      bg: "bg-red-500/20",
-      border: "border-red-500/30",
-    };
-  }
+  const handleDownloadButtonClick = () => {
+    generateDetailedPDF();
+  };
 
   if (loading) {
     return (
@@ -757,7 +791,9 @@ const StudentQuizAttemptReportPage = () => {
                   <div className="flex items-center gap-3 bg-gray-700/30 px-4 py-2 rounded-xl">
                     <Calendar className="w-5 h-5 text-green-400" />
                     <span className="text-gray-200">
-                      {new Date(submittedAt).toLocaleDateString()}
+                      {submittedAt
+                        ? new Date(submittedAt).toLocaleDateString()
+                        : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -816,7 +852,7 @@ const StudentQuizAttemptReportPage = () => {
             <p className="text-blue-200 font-medium">Overall Score</p>
           </div>
 
-          {/* Status Card - COMPLETED HERE */}
+          {/* Status Card */}
           <div
             className={`backdrop-blur-lg border rounded-2xl p-6 shadow-xl group hover:scale-105 transition-all duration-300 ${
               percentage >= 60
@@ -852,7 +888,7 @@ const StudentQuizAttemptReportPage = () => {
             </p>
           </div>
 
-          {/* Security Card - COMPLETED HERE */}
+          {/* Security Card */}
           <div
             className={`backdrop-blur-lg border rounded-2xl p-6 shadow-xl group hover:scale-105 transition-all duration-300 ${
               isSuspicious
@@ -931,24 +967,24 @@ const StudentQuizAttemptReportPage = () => {
                         </h3>
                       </div>
                       <div className="space-y-4">
-                        {geminiAnalytics.strengths.map((strength, index) => (
-                          <div
-                            key={index}
-                            className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 group hover:bg-emerald-500/10 transition-colors"
-                          >
-                            <div className="flex items-start gap-3">
-                              <Star className="w-5 h-5 text-emerald-400 mt-1 group-hover:scale-110 transition-transform" />
-                              <div>
-                                <h4 className="font-bold text-emerald-200 mb-1">
-                                  {strength.topic}
-                                </h4>
-                                <p className="text-emerald-100">
-                                  {strength.performance}
-                                </p>
+                        {geminiAnalytics.strengths.map(
+                          (strengthString, index) => (
+                            <div
+                              key={index}
+                              className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4 group hover:bg-emerald-500/10 transition-colors"
+                            >
+                              <div className="flex items-start gap-3">
+                                <Star className="w-5 h-5 text-emerald-400 mt-1 group-hover:scale-110 transition-transform" />
+                                <div>
+                                  {/* Directly render the strength string */}
+                                  <p className="text-emerald-100">
+                                    {strengthString}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        )}
                       </div>
                     </div>
                   )}
@@ -965,7 +1001,7 @@ const StudentQuizAttemptReportPage = () => {
                       </div>
                       <div className="space-y-4">
                         {geminiAnalytics.areasForImprovement.map(
-                          (area, index) => (
+                          (areaString, index) => (
                             <div
                               key={index}
                               className="bg-rose-500/5 border border-rose-500/10 rounded-xl p-4 group hover:bg-rose-500/10 transition-colors"
@@ -973,12 +1009,8 @@ const StudentQuizAttemptReportPage = () => {
                               <div className="flex items-start gap-3">
                                 <Lightbulb className="w-5 h-5 text-rose-400 mt-1 group-hover:scale-110 transition-transform" />
                                 <div>
-                                  <h4 className="font-bold text-rose-200 mb-1">
-                                    {area.topic}
-                                  </h4>
-                                  <p className="text-rose-100">
-                                    {area.suggestion}
-                                  </p>
+                                  {/* Directly render the area string */}
+                                  <p className="text-rose-100">{areaString}</p>
                                 </div>
                               </div>
                             </div>
