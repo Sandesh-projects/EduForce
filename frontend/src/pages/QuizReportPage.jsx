@@ -23,7 +23,8 @@ import {
   Frown, // Added for "No report available" state
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-// Import jsPDF dynamically later when needed by generatePDF function
+import jsPDF from "jspdf"; // Keep this import for now, as it's used directly
+import "jspdf-autotable"; // Ensure this is imported if you're using it
 
 const QuizReportPage = () => {
   const { attemptId } = useParams();
@@ -110,10 +111,13 @@ const QuizReportPage = () => {
   }, [navigate, user, report]); // Added report to dependencies for handleBack
 
   // Helper to find original question details including correct answer
-  const getQuestionDetails = (questionId) => {
-    // This assumes `report.quiz` is populated correctly from the backend on the attempt object.
-    return report.quiz?.questions.find((q) => q.id === questionId);
-  };
+  const getQuestionDetails = useCallback(
+    (questionId) => {
+      // This assumes `report.quiz` is populated correctly from the backend on the attempt object.
+      return report?.quiz?.questions.find((q) => q.id === questionId);
+    },
+    [report]
+  );
 
   // Handle PDF generation and download
   const generatePDF = async () => {
@@ -124,8 +128,6 @@ const QuizReportPage = () => {
     setIsGeneratingPDF(true);
 
     try {
-      // Dynamically import jsPDF
-      const { jsPDF } = await import("jspdf");
       const doc = new jsPDF("p", "mm", "a4"); // 'p' for portrait, 'mm' for millimeters, 'a4' for size
       let y = 20; // Initial Y position
       const margin = 20;
@@ -162,18 +164,24 @@ const QuizReportPage = () => {
       doc.text("Quiz Attempt Report", margin, y);
       y += 10;
       doc.setFontSize(16);
-      doc.text(`${report.quizTitle}`, margin, y);
+      doc.text(`${report.quizTitle || "N/A"}`, margin, y);
       y += 8;
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `Subject: ${report.quizSubject} | Topic: ${report.quizTopic}`,
+        `Subject: ${report.quizSubject || "N/A"} | Topic: ${
+          report.quizTopic || "N/A"
+        }`,
         margin,
         y
       );
       y += 5;
       doc.text(
-        `Submitted On: ${new Date(report.submittedAt).toLocaleString()}`,
+        `Submitted On: ${
+          report.submittedAt
+            ? new Date(report.submittedAt).toLocaleString()
+            : "N/A"
+        }`,
         margin,
         y
       );
@@ -196,9 +204,19 @@ const QuizReportPage = () => {
       y += lineHeight;
       doc.setFontSize(12);
       doc.setFont("helvetica", "normal");
-      doc.text(`Score: ${report.score} / ${report.totalQuestions}`, margin, y);
+      doc.text(
+        `Score: ${report.score || 0} / ${report.totalQuestions || 0}`,
+        margin,
+        y
+      );
       y += lineHeight;
-      doc.text(`Percentage: ${report.percentage.toFixed(2)}%`, margin, y);
+      doc.text(
+        `Percentage: ${
+          report.percentage !== undefined ? report.percentage.toFixed(2) : "N/A"
+        }%`,
+        margin,
+        y
+      );
       y += lineHeight;
       doc.text(
         `Suspicious Activity: ${report.isSuspicious ? "Detected" : "None"}`,
@@ -283,7 +301,8 @@ const QuizReportPage = () => {
           doc.setFontSize(12);
           doc.setFont("helvetica", "normal");
           strengths.forEach((s) => {
-            const strengthText = `• ${s.topic}: ${s.performance}`;
+            // ASSUMPTION: s is a string, not an object {topic, performance}
+            const strengthText = `• ${s}`; // Directly use the string `s`
             const splitText = doc.splitTextToSize(
               strengthText,
               contentWidth - 15
@@ -304,7 +323,8 @@ const QuizReportPage = () => {
           doc.setFontSize(12);
           doc.setFont("helvetica", "normal");
           areasForImprovement.forEach((a) => {
-            const improvementText = `• ${a.topic}: ${a.suggestion}`;
+            // ASSUMPTION: a is a string, not an object {topic, suggestion}
+            const improvementText = `• ${a}`; // Directly use the string `a`
             const splitText = doc.splitTextToSize(
               improvementText,
               contentWidth - 15
@@ -330,17 +350,21 @@ const QuizReportPage = () => {
             const selectedAnswerText =
               originalQuestion?.options?.find(
                 (opt) => opt.id === qf.selectedOptionId
-              )?.text || qf.selectedAnswer;
+              )?.text ||
+              qf.selectedAnswer ||
+              "N/A"; // Added N/A fallback
 
             const correctAnswerText =
               originalQuestion?.options?.find(
                 (opt) => opt.id === originalQuestion?.correctAnswerId
-              )?.text || qf.correctAnswer;
+              )?.text ||
+              qf.correctAnswer ||
+              "N/A"; // Added N/A fallback
 
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             const qText = `Q${index + 1}: ${
-              originalQuestion?.questionText || qf.questionText
+              originalQuestion?.questionText || qf.questionText || "N/A"
             }`;
             const splitQText = doc.splitTextToSize(qText, contentWidth - 10);
             doc.text(splitQText, margin + 10, y);
@@ -369,7 +393,7 @@ const QuizReportPage = () => {
               y += splitCorrectAns.length * lineHeight;
             }
 
-            const explanation = `Explanation: ${qf.explanation}`;
+            const explanation = `Explanation: ${qf.explanation || "N/A"}`;
             const splitExplanation = doc.splitTextToSize(
               explanation,
               contentWidth - 15
@@ -643,7 +667,8 @@ const QuizReportPage = () => {
                   <ul className="list-disc list-inside text-lg text-green-200 space-y-1">
                     {strengths.map((s, index) => (
                       <li key={index}>
-                        <strong>{s.topic}:</strong> {s.performance}
+                        {/* Directly render the string 's' */}
+                        {s}
                       </li>
                     ))}
                   </ul>
@@ -658,7 +683,8 @@ const QuizReportPage = () => {
                   <ul className="list-disc list-inside text-lg text-red-200 space-y-1">
                     {areasForImprovement.map((a, index) => (
                       <li key={index}>
-                        <strong>{a.topic}:</strong> {a.suggestion}
+                        {/* Directly render the string 'a' */}
+                        {a}
                       </li>
                     ))}
                   </ul>
