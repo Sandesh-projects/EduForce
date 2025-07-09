@@ -1,53 +1,59 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaEdit, FaSave, FaBan } from "react-icons/fa"; // Icons for actions
+import {
+  FaTimes,
+  FaEdit,
+  FaSave,
+  FaBan,
+  FaQuestionCircle,
+  FaBookOpen,
+  FaGraduationCap,
+} from "react-icons/fa";
 
 /**
- * QuizPreviewModal component displays a quiz for preview and allows editing.
- *
- * @param {object} props - Component props.
- * @param {object} props.quiz - The quiz object to display and edit.
- * @param {function} props.onClose - Function to call when the modal is closed.
- * @param {function} props.onSave - Function to call when changes are saved.
+ * Enhanced QuizPreviewModal component with improved UX and visual consistency
  */
 const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
-  // State for the quiz data that can be edited within the modal
   const [editableQuiz, setEditableQuiz] = useState(null);
-  // Tracks which question is currently in editing mode
   const [editingQuestionId, setEditingQuestionId] = useState(null);
-  // Tracks if quiz title/subject/topic are being edited
   const [isEditingQuizDetails, setIsEditingQuizDetails] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Initialize `editableQuiz` when the `quiz` prop changes
+  // Initialize editable quiz and track changes
   useEffect(() => {
     if (quiz) {
       setEditableQuiz({ ...quiz });
+      setHasUnsavedChanges(false);
     }
   }, [quiz]);
 
-  // Don't render if quiz data isn't loaded yet
+  // Track changes to mark as unsaved
+  useEffect(() => {
+    if (editableQuiz && quiz) {
+      const hasChanges = JSON.stringify(editableQuiz) !== JSON.stringify(quiz);
+      setHasUnsavedChanges(hasChanges);
+    }
+  }, [editableQuiz, quiz]);
+
   if (!editableQuiz) return null;
 
-  // Handles changes to quiz details (title, subject, topic)
-  const handleDetailChange = (e) => {
-    const { name, value } = e.target;
+  // Enhanced handlers with consistent state management
+  const handleDetailChange = (field, value) => {
     setEditableQuiz((prev) => ({
       ...prev,
-      [name]: value,
+      [field]: value,
     }));
   };
 
-  // Handles changes to a question's text
-  const handleQuestionTextChange = (questionId, newText) => {
+  const handleQuestionChange = (questionId, updates) => {
     setEditableQuiz((prev) => ({
       ...prev,
       questions: prev.questions.map((q) =>
-        q.id === questionId ? { ...q, questionText: newText } : q
+        q.id === questionId ? { ...q, ...updates } : q
       ),
     }));
   };
 
-  // Handles changes to an option's text for a specific question
-  const handleOptionTextChange = (questionId, optionId, newText) => {
+  const handleOptionChange = (questionId, optionId, newText) => {
     setEditableQuiz((prev) => ({
       ...prev,
       questions: prev.questions.map((q) =>
@@ -63,334 +69,498 @@ const QuizPreviewModal = ({ quiz, onClose, onSave }) => {
     }));
   };
 
-  // Handles changing the correct answer for a question
-  const handleCorrectAnswerChange = (questionId, newCorrectAnswerId) => {
-    setEditableQuiz((prev) => ({
-      ...prev,
-      questions: prev.questions.map((q) =>
-        q.id === questionId ? { ...q, correctAnswerId: newCorrectAnswerId } : q
-      ),
-    }));
-  };
-
-  // Handles changes to other question fields like explanation, difficulty, topic
-  const handleQuestionFieldChange = (questionId, fieldName, value) => {
-    setEditableQuiz((prev) => ({
-      ...prev,
-      questions: prev.questions.map((q) =>
-        q.id === questionId ? { ...q, [fieldName]: value } : q
-      ),
-    }));
-  };
-
-  // Saves all current edits and calls the `onSave` prop
   const handleSaveQuiz = () => {
     if (onSave) {
-      onSave(editableQuiz); // Pass the edited quiz object to the parent
+      onSave(editableQuiz);
     }
-    setEditingQuestionId(null); // Exit question editing mode
-    setIsEditingQuizDetails(false); // Exit quiz details editing mode
+    setEditingQuestionId(null);
+    setIsEditingQuizDetails(false);
+    setHasUnsavedChanges(false);
   };
 
-  // Cancels all edits and reverts to the original quiz data
   const handleCancelEdit = () => {
-    setEditableQuiz({ ...quiz }); // Revert to original quiz prop
-    setEditingQuestionId(null); // Exit question editing mode
-    setIsEditingQuizDetails(false); // Exit quiz details editing mode
+    setEditableQuiz({ ...quiz });
+    setEditingQuestionId(null);
+    setIsEditingQuizDetails(false);
+    setHasUnsavedChanges(false);
+  };
+
+  const getDifficultyColor = (difficulty) => {
+    switch (difficulty?.toLowerCase()) {
+      case "easy":
+        return "text-green-400 bg-green-400/10";
+      case "medium":
+        return "text-yellow-400 bg-yellow-400/10";
+      case "hard":
+        return "text-red-400 bg-red-400/10";
+      default:
+        return "text-gray-400 bg-gray-400/10";
+    }
+  };
+
+  const InputField = ({
+    value,
+    onChange,
+    placeholder,
+    className = "",
+    multiline = false,
+    rows = 3,
+  }) => {
+    const baseClasses =
+      "w-full p-3 rounded-lg bg-gray-800/80 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200";
+
+    if (multiline) {
+      return (
+        <textarea
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          rows={rows}
+          className={`${baseClasses} resize-y min-h-[80px] ${className}`}
+        />
+      );
+    }
+
+    return (
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`${baseClasses} ${className}`}
+      />
+    );
+  };
+
+  const EditButton = ({ onClick, isEditing, size = "md" }) => {
+    const sizeClasses = size === "sm" ? "p-2" : "p-3";
+    const iconSize = size === "sm" ? 16 : 20;
+
+    return (
+      <button
+        onClick={onClick}
+        className={`${sizeClasses} rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 ${
+          isEditing
+            ? "bg-green-600 hover:bg-green-500 text-white"
+            : "bg-blue-600 hover:bg-blue-500 text-white"
+        }`}
+        title={isEditing ? "Save Changes" : "Edit"}
+      >
+        {isEditing ? <FaSave size={iconSize} /> : <FaEdit size={iconSize} />}
+      </button>
+    );
+  };
+
+  const CancelButton = ({ onClick, size = "md" }) => {
+    const sizeClasses = size === "sm" ? "p-2" : "p-3";
+    const iconSize = size === "sm" ? 16 : 20;
+
+    return (
+      <button
+        onClick={onClick}
+        className={`${sizeClasses} rounded-full bg-red-600 hover:bg-red-500 text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105`}
+        title="Cancel"
+      >
+        <FaBan size={iconSize} />
+      </button>
+    );
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center p-4 z-50">
-      <div className="bg-gradient-to-br from-gray-900 to-purple-950 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative p-8 border border-purple-700/50">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors duration-200"
-          title="Close"
-        >
-          <FaTimes size={24} />
-        </button>
-
-        {/* Quiz Details (Title, Code, Subject, Topic) with Edit/Save/Cancel */}
-        <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-          {isEditingQuizDetails ? (
-            // Input fields when editing quiz details
-            <div className="w-full space-y-3">
-              <input
-                type="text"
-                name="quizTitle"
-                value={editableQuiz.quizTitle}
-                onChange={handleDetailChange}
-                className="text-3xl font-bold w-full p-3 rounded-lg bg-gray-800 border border-purple-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-              <input
-                type="text"
-                name="subject"
-                value={editableQuiz.subject}
-                onChange={handleDetailChange}
-                className="text-gray-300 w-full p-2 rounded-lg bg-gray-800 border border-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Subject"
-              />
-              <input
-                type="text"
-                name="userProvidedTopic"
-                value={editableQuiz.userProvidedTopic}
-                onChange={handleDetailChange}
-                className="text-gray-300 w-full p-2 rounded-lg bg-gray-800 border border-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Topic"
-              />
-            </div>
-          ) : (
-            // Display quiz details when not editing
-            <div>
-              <h2 className="text-4xl font-extrabold text-white mb-2 bg-gradient-to-r from-purple-300 to-pink-300 bg-clip-text">
-                {editableQuiz.quizTitle}
-              </h2>
-              <p className="text-gray-400 mb-1">
-                <span className="font-semibold">Quiz Code:</span>{" "}
-                <span className="font-mono text-purple-400">
-                  {editableQuiz.quizCode}
-                </span>
-              </p>
-              <p className="text-gray-400 mb-1">
-                <span className="font-semibold">Subject:</span>{" "}
-                {editableQuiz.subject}
-              </p>
-              <p className="text-gray-400 mb-4">
-                <span className="font-semibold">Topic:</span>{" "}
-                {editableQuiz.userProvidedTopic}
-              </p>
-            </div>
-          )}
-          {/* Edit/Save/Cancel buttons for quiz details */}
-          {isEditingQuizDetails ? (
-            <div className="flex space-x-3 ml-6">
-              <button
-                onClick={() => setIsEditingQuizDetails(false)}
-                className="p-3 rounded-full bg-green-700 text-white hover:bg-green-600 transition duration-200 shadow-md"
-                title="Done Editing Details"
-              >
-                <FaSave size={20} />
-              </button>
-              <button
-                onClick={handleCancelEdit}
-                className="p-3 rounded-full bg-red-700 text-white hover:bg-red-600 transition duration-200 shadow-md"
-                title="Cancel Details Edit"
-              >
-                <FaBan size={20} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsEditingQuizDetails(true)}
-              className="p-3 rounded-full bg-blue-700 text-white hover:bg-blue-600 transition duration-200 shadow-md ml-6"
-              title="Edit Quiz Details"
-            >
-              <FaEdit size={20} />
-            </button>
-          )}
-        </div>
-
-        {/* Questions Section */}
-        <h3 className="text-3xl font-bold text-white mb-5 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text">
-          Questions:
-        </h3>
-        {editableQuiz.questions.map((q, qIndex) => (
-          <div
-            key={q.id}
-            className="mb-8 p-6 rounded-xl border border-gray-700 bg-gray-800/60 shadow-lg"
-          >
-            <div className="flex justify-between items-start mb-4">
-              {/* Question Text - Editable or Display */}
-              {editingQuestionId === q.id ? (
-                <textarea
-                  className="text-lg font-medium w-full p-3 rounded-lg bg-gray-700 border border-purple-600 text-white placeholder-gray-400 resize-y min-h-[80px] focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  value={q.questionText}
-                  onChange={(e) =>
-                    handleQuestionTextChange(q.id, e.target.value)
-                  }
-                  rows="3"
-                />
-              ) : (
-                <p className="text-lg font-medium text-white">
-                  <span className="text-purple-400 font-bold">
-                    {qIndex + 1}.
-                  </span>{" "}
-                  {q.questionText}
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-purple-900 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden border border-purple-500/30">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-b border-purple-500/30 p-6">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-purple-600/20 rounded-full">
+                <FaQuestionCircle className="text-purple-400" size={24} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Quiz Preview</h1>
+                <p className="text-gray-400">
+                  Review and edit your quiz content
                 </p>
-              )}
-              {/* Edit/Save/Cancel buttons for individual questions */}
-              {editingQuestionId === q.id ? (
-                <div className="flex space-x-2 ml-6 shrink-0">
-                  <button
-                    onClick={() => setEditingQuestionId(null)}
-                    className="p-2 rounded-full bg-green-700 text-white hover:bg-green-600 transition duration-200 shadow-sm"
-                    title="Done Editing Question"
-                  >
-                    <FaSave size={18} />
-                  </button>
-                  <button
-                    onClick={handleCancelEdit} // This cancels all edits in the modal
-                    className="p-2 rounded-full bg-red-700 text-white hover:bg-red-600 transition duration-200 shadow-sm"
-                    title="Cancel Question Edit"
-                  >
-                    <FaBan size={18} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setEditingQuestionId(q.id)}
-                  className="p-2 rounded-full bg-blue-700 text-white hover:bg-blue-600 transition duration-200 shadow-sm ml-6 shrink-0"
-                  title="Edit Question"
-                >
-                  <FaEdit size={18} />
-                </button>
-              )}
+              </div>
             </div>
 
-            {/* Options List */}
-            <ul className="space-y-3 mt-4 ml-6">
-              {q.options.map((option) => (
-                <li key={option.id} className="flex items-center">
-                  {editingQuestionId === q.id ? (
-                    // Editable options with radio button for correct answer
-                    <>
-                      <input
-                        type="radio"
-                        name={`correct_answer_${q.id}`}
-                        value={option.id}
-                        checked={option.id === q.correctAnswerId}
-                        onChange={() =>
-                          handleCorrectAnswerChange(q.id, option.id)
-                        }
-                        className="mr-3 form-radio h-5 w-5 text-purple-500 border-gray-600 focus:ring-purple-500 bg-gray-700"
-                      />
-                      <input
-                        type="text"
-                        value={option.text}
-                        onChange={(e) =>
-                          handleOptionTextChange(
-                            q.id,
-                            option.id,
-                            e.target.value
-                          )
-                        }
-                        className="flex-grow p-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </>
-                  ) : (
-                    // Display options, highlight correct answer
-                    <span
-                      className={`text-lg ${
-                        option.id === q.correctAnswerId
-                          ? "text-green-400 font-semibold"
-                          : "text-gray-300"
-                      }`}
-                    >
-                      {option.text}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-
-            {/* Explanation, Difficulty, Topic */}
-            <div className="mt-5 text-sm space-y-2">
-              <div className="flex items-center">
-                <span className="font-semibold text-gray-400">
-                  Correct Answer:
-                </span>{" "}
-                <span className="ml-2 text-green-400">
-                  {q.options.find((opt) => opt.id === q.correctAnswerId)?.text}
-                </span>
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center">
-                <span className="font-semibold text-gray-400 md:w-28 shrink-0">
-                  Explanation:
-                </span>{" "}
-                {editingQuestionId === q.id ? (
-                  <textarea
-                    className="flex-grow p-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 resize-y min-h-[60px] ml-0 md:ml-2 mt-2 md:mt-0 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    value={q.explanation}
-                    onChange={(e) =>
-                      handleQuestionFieldChange(
-                        q.id,
-                        "explanation",
-                        e.target.value
-                      )
-                    }
-                    rows="2"
-                  />
-                ) : (
-                  <span className="ml-0 md:ml-2 text-gray-300 mt-2 md:mt-0">
-                    {q.explanation}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col md:flex-row md:items-center">
-                <span className="font-semibold text-gray-400 md:w-28 shrink-0">
-                  Difficulty:
-                </span>{" "}
-                {editingQuestionId === q.id ? (
-                  <select
-                    value={q.difficulty}
-                    onChange={(e) =>
-                      handleQuestionFieldChange(
-                        q.id,
-                        "difficulty",
-                        e.target.value
-                      )
-                    }
-                    className="p-2 rounded-lg bg-gray-700 border border-gray-600 text-white ml-0 md:ml-2 mt-2 md:mt-0 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
-                ) : (
-                  <span className="ml-0 md:ml-2 text-gray-300 mt-2 md:mt-0">
-                    {q.difficulty}
-                  </span>
-                )}
-                <span className="mx-2 hidden md:inline text-gray-400">|</span>
-                <span className="font-semibold text-gray-400 md:w-16 shrink-0 mt-2 md:mt-0">
-                  Topic:
-                </span>{" "}
-                {editingQuestionId === q.id ? (
-                  <input
-                    type="text"
-                    value={q.topic}
-                    onChange={(e) =>
-                      handleQuestionFieldChange(q.id, "topic", e.target.value)
-                    }
-                    className="flex-grow p-2 rounded-lg bg-gray-700 border border-gray-600 text-white placeholder-gray-400 ml-0 md:ml-2 mt-2 md:mt-0 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                ) : (
-                  <span className="ml-0 md:ml-2 text-gray-300 mt-2 md:mt-0">
-                    {q.topic}
-                  </span>
-                )}
-              </div>
+            <div className="flex items-center space-x-3">
+              {hasUnsavedChanges && (
+                <div className="flex items-center space-x-2 text-yellow-400 bg-yellow-400/10 px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                  <span className="text-sm">Unsaved changes</span>
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-all duration-200"
+                title="Close"
+              >
+                <FaTimes size={20} />
+              </button>
             </div>
           </div>
-        ))}
+        </div>
 
-        {/* Global Save/Cancel Buttons */}
-        <div className="flex justify-end mt-8 space-x-4">
-          <button
-            onClick={handleSaveQuiz}
-            className="py-3 px-8 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-lg flex items-center justify-center space-x-2 transform hover:scale-105"
-            title="Save all changes"
-          >
-            <FaSave /> <span>Save All Changes</span>
-          </button>
-          <button
-            onClick={handleCancelEdit}
-            className="py-3 px-8 bg-gray-700 border border-gray-600 text-gray-200 rounded-full font-semibold hover:bg-gray-600 transition-all duration-300 shadow-lg flex items-center justify-center space-x-2 transform hover:scale-105"
-            title="Cancel all changes and close"
-          >
-            <FaBan /> <span>Cancel</span>
-          </button>
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-160px)] p-6">
+          {/* Quiz Details Section */}
+          <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6 mb-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center space-x-3">
+                <FaBookOpen className="text-purple-400" size={20} />
+                <h2 className="text-xl font-semibold text-white">
+                  Quiz Details
+                </h2>
+              </div>
+              <div className="flex space-x-2">
+                {isEditingQuizDetails ? (
+                  <>
+                    <EditButton
+                      onClick={() => setIsEditingQuizDetails(false)}
+                      isEditing={true}
+                      size="sm"
+                    />
+                    <CancelButton onClick={handleCancelEdit} size="sm" />
+                  </>
+                ) : (
+                  <EditButton
+                    onClick={() => setIsEditingQuizDetails(true)}
+                    isEditing={false}
+                    size="sm"
+                  />
+                )}
+              </div>
+            </div>
+
+            {isEditingQuizDetails ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Quiz Title
+                  </label>
+                  <InputField
+                    value={editableQuiz.quizTitle || ""}
+                    onChange={(e) =>
+                      handleDetailChange("quizTitle", e.target.value)
+                    }
+                    placeholder="Enter quiz title"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Subject
+                    </label>
+                    <InputField
+                      value={editableQuiz.subject || ""}
+                      onChange={(e) =>
+                        handleDetailChange("subject", e.target.value)
+                      }
+                      placeholder="Enter subject"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Topic
+                    </label>
+                    <InputField
+                      value={editableQuiz.userProvidedTopic || ""}
+                      onChange={(e) =>
+                        handleDetailChange("userProvidedTopic", e.target.value)
+                      }
+                      placeholder="Enter topic"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-2xl font-bold text-white bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    {editableQuiz.quizTitle || "Untitled Quiz"}
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">Code:</span>
+                    <span className="font-mono text-purple-400 bg-purple-400/10 px-2 py-1 rounded">
+                      {editableQuiz.quizCode || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">Subject:</span>
+                    <span className="text-white">
+                      {editableQuiz.subject || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">Topic:</span>
+                    <span className="text-white">
+                      {editableQuiz.userProvidedTopic || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Questions Section */}
+          <div className="space-y-6">
+            <div className="flex items-center space-x-3">
+              <FaGraduationCap className="text-purple-400" size={20} />
+              <h2 className="text-xl font-semibold text-white">
+                Questions ({editableQuiz.questions?.length || 0})
+              </h2>
+            </div>
+
+            {editableQuiz.questions?.map((question, index) => (
+              <div
+                key={question.id}
+                className="bg-gray-800/50 rounded-xl border border-gray-700/50 p-6"
+              >
+                {/* Question Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-center w-8 h-8 bg-purple-600 rounded-full text-white font-bold text-sm">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-400">
+                        Question {index + 1}
+                      </span>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(
+                            question.difficulty
+                          )}`}
+                        >
+                          {question.difficulty || "Medium"}
+                        </span>
+                        {question.topic && (
+                          <span className="text-xs text-gray-400 bg-gray-700/50 px-2 py-1 rounded-full">
+                            {question.topic}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    {editingQuestionId === question.id ? (
+                      <>
+                        <EditButton
+                          onClick={() => setEditingQuestionId(null)}
+                          isEditing={true}
+                          size="sm"
+                        />
+                        <CancelButton onClick={handleCancelEdit} size="sm" />
+                      </>
+                    ) : (
+                      <EditButton
+                        onClick={() => setEditingQuestionId(question.id)}
+                        isEditing={false}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Question Content */}
+                <div className="space-y-4">
+                  {/* Question Text */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Question
+                    </label>
+                    {editingQuestionId === question.id ? (
+                      <InputField
+                        value={question.questionText || ""}
+                        onChange={(e) =>
+                          handleQuestionChange(question.id, {
+                            questionText: e.target.value,
+                          })
+                        }
+                        placeholder="Enter question text"
+                        multiline={true}
+                        rows={2}
+                      />
+                    ) : (
+                      <p className="text-white bg-gray-700/30 p-3 rounded-lg border border-gray-600/30">
+                        {question.questionText || "No question text"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Options */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-3">
+                      Answer Options
+                    </label>
+                    <div className="space-y-2">
+                      {question.options?.map((option, optIndex) => (
+                        <div
+                          key={option.id}
+                          className="flex items-center space-x-3"
+                        >
+                          <div className="flex items-center justify-center w-6 h-6 bg-gray-700 rounded-full text-white text-xs font-bold">
+                            {String.fromCharCode(65 + optIndex)}
+                          </div>
+
+                          {editingQuestionId === question.id ? (
+                            <>
+                              <input
+                                type="radio"
+                                name={`correct_${question.id}`}
+                                checked={option.id === question.correctAnswerId}
+                                onChange={() =>
+                                  handleQuestionChange(question.id, {
+                                    correctAnswerId: option.id,
+                                  })
+                                }
+                                className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                              />
+                              <InputField
+                                value={option.text || ""}
+                                onChange={(e) =>
+                                  handleOptionChange(
+                                    question.id,
+                                    option.id,
+                                    e.target.value
+                                  )
+                                }
+                                placeholder={`Option ${String.fromCharCode(
+                                  65 + optIndex
+                                )}`}
+                                className="flex-1"
+                              />
+                            </>
+                          ) : (
+                            <div
+                              className={`flex-1 p-3 rounded-lg border ${
+                                option.id === question.correctAnswerId
+                                  ? "bg-green-400/10 border-green-400/50 text-green-400"
+                                  : "bg-gray-700/30 border-gray-600/30 text-white"
+                              }`}
+                            >
+                              {option.text || "No option text"}
+                              {option.id === question.correctAnswerId && (
+                                <span className="ml-2 text-xs bg-green-400/20 text-green-400 px-2 py-1 rounded-full">
+                                  Correct
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Additional Question Details */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Difficulty
+                      </label>
+                      {editingQuestionId === question.id ? (
+                        <select
+                          value={question.difficulty || "Medium"}
+                          onChange={(e) =>
+                            handleQuestionChange(question.id, {
+                              difficulty: e.target.value,
+                            })
+                          }
+                          className="w-full p-3 rounded-lg bg-gray-800/80 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="Easy">Easy</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Hard">Hard</option>
+                        </select>
+                      ) : (
+                        <div
+                          className={`p-3 rounded-lg ${getDifficultyColor(
+                            question.difficulty
+                          )}`}
+                        >
+                          {question.difficulty || "Medium"}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Topic
+                      </label>
+                      {editingQuestionId === question.id ? (
+                        <InputField
+                          value={question.topic || ""}
+                          onChange={(e) =>
+                            handleQuestionChange(question.id, {
+                              topic: e.target.value,
+                            })
+                          }
+                          placeholder="Enter topic"
+                        />
+                      ) : (
+                        <div className="p-3 rounded-lg bg-gray-700/30 border border-gray-600/30 text-white">
+                          {question.topic || "No topic specified"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Explanation */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Explanation
+                    </label>
+                    {editingQuestionId === question.id ? (
+                      <InputField
+                        value={question.explanation || ""}
+                        onChange={(e) =>
+                          handleQuestionChange(question.id, {
+                            explanation: e.target.value,
+                          })
+                        }
+                        placeholder="Enter explanation for the correct answer"
+                        multiline={true}
+                        rows={2}
+                      />
+                    ) : (
+                      <div className="p-3 rounded-lg bg-gray-700/30 border border-gray-600/30 text-gray-300">
+                        {question.explanation || "No explanation provided"}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-700/50 p-6 bg-gray-800/30">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-400">
+              {editableQuiz.questions?.length || 0} question(s) total
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={handleCancelEdit}
+                className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-200 flex items-center space-x-2"
+              >
+                <FaBan size={16} />
+                <span>Cancel</span>
+              </button>
+              <button
+                onClick={handleSaveQuiz}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg"
+              >
+                <FaSave size={16} />
+                <span>Save Changes</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
